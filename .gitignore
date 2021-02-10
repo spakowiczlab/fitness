@@ -41,6 +41,9 @@ vignettes/*.pdf
 # Large csv files
 *.csv
 
+# Weird id keys
+*.xlsx
+
 # paths system
 fitness.json
 00-paths.R
