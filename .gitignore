@@ -37,3 +37,10 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+
+# Large csv files
+*.csv
+
+# paths system
+fitness.json
+00-paths.R
