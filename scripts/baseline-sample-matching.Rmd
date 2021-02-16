@@ -74,8 +74,7 @@ earliest.samps <- patcy %>%
   group_by(patient.id) %>%
   filter(date == min(date) | is.na(date)) %>%
   left_join(idkeys.form) %>%
-  select(-sheet) %>%
-  rename("sample.date" = "date")
+  select(-sheet, -date) 
 
 full.microbes <- bind_rows(batch1, batch2)
 
