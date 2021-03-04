@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 library(dplyr)
 library(readxl)
+library(tidyr)
 source("00-paths.R")
 ```
 
@@ -42,7 +43,7 @@ idkeys.form <- bind_rows(idkeys.keyon) %>%
 patkey <- patkey.raw %>%
   filter(!is.na(Order)) %>%
   rename('sequence.id' = "Code") %>%
-  separate(Name, by = " ", into = c("patient.id", "date")) %>%
+  separate(Name, sep = " ", into = c("patient.id", "date")) %>%
   mutate(year = paste0(20, substr(date, 1, 2)),
          month = substr(date, 3, 4),
          day = substr(date, 5,6),

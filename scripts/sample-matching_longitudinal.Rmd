@@ -1,0 +1,98 @@
+---
+title: "baseline sample matching"
+author: "Rebecca Hoyd"
+date: "2/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(dplyr)
+library(readxl)
+library(tidyr)
+library(writexl)
+source("00-paths.R")
+```
+
+This document is just to check which microbe samples match with which visits we have info on based on the data available in redcapp. I am not making any final objects at this point.
+# Load data
+
+```{r}
+CoRR <- read.csv(file.path(paths$controlled,
+                                   "CoRR5512FITNESSCalcu-FullLungDataset2921_DATA_2021-02-09_1311.csv"),
+                  stringsAsFactors = F)
+
+# patkey.raw <- read_excel(file.path(paths$data, "key_sequence-to-date.xlsx"))
+
+runcheck <- read_excel(file.path(paths$data, "Fitness-samples-tbr-2021.xlsx"))
+
+# batch1 <- read.csv(file.path(paths$data, "aggtab_metaphlan_QC-filtered.csv"), stringsAsFactors = F)
+# batch2 <- read.csv(file.path(paths$data, "20025_metaphlan_filtered.csv"), stringsAsFactors = F)
+
+idkeys <- lapply(1:2, function(x) read_excel(path = file.path(paths$controlled, "OSU-18055 shared patient log.xlsx"),
+                                             sheet = x))
+```
+
+# Keys formatting
+```{r}
+idkeys.keyon <- lapply(idkeys, function(x) x[, 1:2])
+idkeys.form <- bind_rows(idkeys.keyon) %>%
+  gather(-`study ID`, key = "sheet", value = "id") %>%
+  rename("patient.id" = "study ID") %>%
+  filter(!is.na(id))
+
+patkey <- runcheck %>%
+  # filter(!is.na(Order)) %>%
+  rename('sequence.id' = "Sample Id",
+         "patient.id" = "Record Id") %>%
+  mutate(year = paste0(20, substr(Sample, 1, 2)),
+         month = substr(Sample, 3, 4),
+         day = substr(Sample, 5,6),
+         date = as.POSIXct(paste(year, month, day, sep = "/"), format = "%Y/%m/%d"),
+         patient.id = as.numeric(patient.id)) %>%
+  select(sequence.id, patient.id, date) %>%
+  mutate(stool_sample_date = as.character(date))
+
+```
+
+```{r}
+
+test[grep("date", test)]
+
+
+CoRR.reduced <- CoRR %>%
+  filter(is.na(redcap_repeat_instance)) %>%
+  select(id, redcap_event_name, start_date_1, tox_onset_new2, stool_sample_date)
+```
+
+# Try some matches
+
+```{r}
+combined_obj <- CoRR.reduced %>%
+  left_join(idkeys.form) %>%
+  select(-sheet) %>%
+  left_join(patkey) %>%
+  select(id, patient.id, redcap_event_name, stool_sample_date, sequence.id)
+
+stooldate.success <- combined_obj %>%
+  filter(!is.na(sequence.id))
+
+stooldate.redfail <- combined_obj %>%
+  filter(is.na(sequence.id) & stool_sample_date != "")
+
+stooldate.micfail <- patkey %>%
+  filter(!sequence.id %in% stooldate.success$sequence.id) %>%
+  left_join(idkeys.form) %>%
+  select(-sheet)
+
+stoolmatch.res <- list(stooldate.success, stooldate.redfail, stooldate.micfail)
+names(stoolmatch.res) <- c("Successfull.matches", "Redcap.unmatched", "Microbes.unmathced")
+```
+
+# Write results
+
+```{r}
+write_xlsx(stoolmatch.res, file.path(paths$data, "test-longitudinal-matching.xlsx"))
+```
+
