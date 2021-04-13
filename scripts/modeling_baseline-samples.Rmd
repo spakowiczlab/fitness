@@ -17,10 +17,10 @@ library(broom)
 
 # Load data
 ```{r}
-asco.dir <- "T:/Labs/Spakowicz/projects/fitness/ASCO2021"
+data.dir <- "T:/Labs/Spakowicz/projects/fitness/data"
 
-clin <- read.csv(file.path(asco.dir, "clinical-with-seqids_baseline.csv"), stringsAsFactors = F)
-ra.table <- read.csv(file.path(asco.dir, "matched-microbes_baseline.csv"), stringsAsFactors = F)
+clin <- read.csv(file.path(data.dir, "clinical-with-seqids_baseline.csv"), stringsAsFactors = F)
+ra.table <- read.csv(file.path(data.dir, "matched-microbes_baseline.csv"), stringsAsFactors = F)
 
 ```
 
@@ -71,14 +71,18 @@ We'll go for CARG and FS 13 for now.
 hist(tab1in$CARG)
 hist(tab1in$`FS 13`)
 hist(tab1in$SPPB)
-
+hist(tab1in$`FS 7`)
+table(tab1in$`FS 7`)
+hist(tab1in$PROMIS)
 ```
 ## Shared formatting
 
 ```{r}
 modin <- clin %>%
   left_join(ra.table) %>%
-  mutate(bin.fs13 = ifelse(fs_13_score == 1, 0, 1))
+  mutate(bin.fs13 = ifelse(fs_13_score == 1, 0, 1),
+         bin.sppb = ifelse(sppb_score < 10, 0, 1),
+         )
 
 mics <- colnames(ra.table[,-1])
 ```
@@ -103,6 +107,8 @@ carg.mods <- capture.models.univ("carg_score", "gaussian") %>%
   arrange(p.value)
 
 head(carg.mods)
+
+write.csv(carg.mods, file.path(data.dir, "model_carg-microbes.csv"), row.names = F)
 ```
 
 ## FS 13
@@ -113,4 +119,29 @@ fs13.mods <- capture.models.univ("bin.fs13", "binomial") %>%
   arrange(p.value)
 
 head(fs13.mods)
+write.csv(fs13.mods, file.path(data.dir, "model_bin.fs13-microbes.csv"), row.names = F)
+```
+
+## SPPB
+
+```{r}
+sppb.mods <- capture.models.univ("bin.sppb", "binomial") %>%
+  filter(term != "(Intercept)") %>%
+  arrange(p.value)
+
+head(sppb.mods)
+
+write.csv(sppb.mods, file.path(data.dir, "model_bin.sppb-microbes.csv"), row.names = F)
+```
+
+## PROMIS
+
+```{r}
+promis.mods <- capture.models.univ("promis_score", "gaussian") %>%
+  filter(term != "(Intercept)") %>%
+  arrange(p.value)
+
+head(promis.mods)
+
+write.csv(promis.mods, file.path(data.dir, "model_promis-microbes.csv"), row.names = F)
 ```
