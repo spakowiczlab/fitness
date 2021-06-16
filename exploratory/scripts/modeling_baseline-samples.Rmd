@@ -13,6 +13,11 @@ library(tableone)
 library(vegan)
 library(rlist)
 library(broom)
+library(tidyr)
+library(forcats)
+library(ggplot2)
+library(viridis)
+library(ggtext)
 ```
 
 # Load data
@@ -144,4 +149,46 @@ promis.mods <- capture.models.univ("promis_score", "gaussian") %>%
 head(promis.mods)
 
 write.csv(promis.mods, file.path(data.dir, "model_promis-microbes.csv"), row.names = F)
+```
+
+# Visualize modelling results
+
+## CARG
+
+```{r}
+carg.bigeffect <- carg.mods %>%
+  mutate(abseffect = abs(estimate)) %>%
+  filter(p.value < 0.05) %>%
+  arrange(desc(abseffect)) %>%
+  filter(!grepl("\\.t__", term)) %>%
+  mutate(effect.rank = row_number(),
+         taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
+  separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
+  mutate(taxname = gsub("_", " ", taxname),
+         taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
+         taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
+         taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname),
+         taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
+  mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
+                        "Unclassified<br/> Peptostreptococcaceae", taxname))
+
+carg.barin <- carg.bigeffect %>%
+  filter(effect.rank <= 7) %>%
+  arrange(estimate)
+carg.micord <- carg.barin$taxname
+
+carg.barin %>%
+  ggplot(aes(x = fct_relevel(taxname, carg.micord), y = estimate, fill = taxlev)) +
+  geom_col() +
+  scale_fill_viridis(discrete = T, name = "Taxonomy level", breaks = c("f", "g", "s"),
+                     labels = c("Family", "Genus", "Species")) +
+  labs(y = "Effect on CARG", x = "") +
+  # scale_x_discrete(breaks = carg.barin$taxname, labels = italic.names) +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(size = 12)
+        # axis.ticks.x = element_blank(),
+        # axis.text.x = element_blank()
+        ) +
+  coord_flip() +
+  ggsave("../figures/barplot_carg-effects.pdf", height = 4, width = 6)
 ```
