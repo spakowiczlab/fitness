@@ -1,0 +1,18 @@
+#PBS -N download_fitness_4
+#PBS -A PAS1695
+#PBS -l walltime=10:00:00
+#PBS -l nodes=1:ppn=28
+#PBS -j oe
+
+cd /fs/ess/PAS1695/projects/fitness/data/fastqs/
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_72089fb8e41442ff/SQ6966.fastq.gz?response-content-disposition=attachment; filename=FF05465995.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=Yz5actVB0IQKOJsEohlWSa7uUtE%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_a6f611912d434906/SQ6951.fastq.gz?response-content-disposition=attachment; filename=FF05466768.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=U1F0f9q8JK61jukrzcao%2Bzc0tLA%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_0febcf8b77be4c80/SQ6961.fastq.gz?response-content-disposition=attachment; filename=FF05466560.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=KyATQ%2BgzaUDPfUYwLbCUdPQiAQQ%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_3adef9d161014169/SQ6151.fastq.gz?response-content-disposition=attachment; filename=FF05464443.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=owCraAb72ZDdcYiBta3VeWbuD3E%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_3f5dc2c3f96a446c/SQ6907.fastq.gz?response-content-disposition=attachment; filename=FF05466580.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=iZW4OuNNcmRts4XY3SlfaOCZ4eA%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_f690ca4c992e4d8b/SQ6906.fastq.gz?response-content-disposition=attachment; filename=FF05466309.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=GlCnqoCugBsBaehmLZI7WHVVMIo%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_2ebeb3c97bb14225/SQ6911.fastq.gz?response-content-disposition=attachment; filename=FF05464556.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=mD9W6l%2BMrfRi%2BFJ4LtaN0lreqp8%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_17b44d0745d84ee7/SQ6170.fastq.gz?response-content-disposition=attachment; filename=FF05466156.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=0QC8zR9jForFp0oCK9CMy4JLdUI%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_18f3e540611e4cdb/SQ6921.fastq.gz?response-content-disposition=attachment; filename=FF05465958.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=TKk8YVgk33uSXtQEMvgecGG6QPM%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_5b0b9ad666a34e40/SQ6925.fastq.gz?response-content-disposition=attachment; filename=FF05464343.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=f7U1W3UUGdqHUz%2BBys1isfenyQg%3D
+

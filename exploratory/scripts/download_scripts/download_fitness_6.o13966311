@@ -1,0 +1,60 @@
+--2021-07-01 08:19:55--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_a2f536d78df54bab/SQ6919.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.216.144.173
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.216.144.173|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:55 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:55--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_deeba6c139834c8b/SQ6923.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.216.144.173
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.216.144.173|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:55 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:55--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_151be29ff49a4b90/SQ6946.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.216.144.173
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.216.144.173|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:55 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:55--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_1862368d62024b60/SQ6958.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.217.79.198
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.217.79.198|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:56 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:56--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_a976e6480a5a42a6/SQ6936.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.216.144.173
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.216.144.173|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:56 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:56--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_18fc34531d2f4b3b/SQ6948.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.217.79.198
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.217.79.198|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:56 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:56--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_564b05d6d2654e9f/SQ6944.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.216.144.173
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.216.144.173|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:56 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:56--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_17bd6707f65e4f49/SQ6949.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.217.90.102
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.217.90.102|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:56 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:56--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_6420703054c04710/SQ6957.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.216.144.173
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.216.144.173|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:56 ERROR 400: Bad Request.
+
+--2021-07-01 08:19:56--  https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_506b4cb7c216436d/SQ6950.fastq.gz?response-content-disposition=attachment
+Resolving s3.amazonaws.com (s3.amazonaws.com)... 52.216.144.173
+Connecting to s3.amazonaws.com (s3.amazonaws.com)|52.216.144.173|:443... connected.
+HTTP request sent, awaiting response... 400 Bad Request
+2021-07-01 08:19:56 ERROR 400: Bad Request.
+

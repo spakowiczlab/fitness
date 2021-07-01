@@ -1,0 +1,11 @@
+#PBS -N download_fitness_12
+#PBS -A PAS1695
+#PBS -l walltime=10:00:00
+#PBS -l nodes=1:ppn=28
+#PBS -j oe
+
+cd /fs/ess/PAS1695/projects/fitness/data/fastqs/
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_4a8e54747fe34d6c/SQ6148.fastq.gz?response-content-disposition=attachment; filename=FF05466150.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=tim1ZGJ4DHCo0aTLGW8CopejTHQ%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_b9a8327503794348/SQ6153.fastq.gz?response-content-disposition=attachment; filename=FF05465996.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=d114aikHDM0FeAxFYpnpkkoSG6E%3D
+wget https://s3.amazonaws.com/refgenomics-userdata-production-encrypted/user_296ad2f563604ef1/file_b5ba6f2aee61453c/SQ6155.fastq.gz?response-content-disposition=attachment; filename=FF05466177.fastq.gz&AWSAccessKeyId=AKIA6GPUEB7CLCIK2XEI&Expires=1625594771&Signature=1gNs%2F47CghG6vrggIuxUlOUCBPs%3D
+
