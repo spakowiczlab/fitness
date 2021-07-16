@@ -24,25 +24,28 @@ CoRR <- read.csv(file.path(paths$controlled,
                   stringsAsFactors = F)
 
 
-runcheck <- read_excel(file.path(paths$data, "Fitness-samples-tbr-2021.xlsx"))
-
-
-idkeys <- lapply(1:2, function(x) read_excel(path = file.path(paths$controlled, "OSU-18055 shared patient log.xlsx"),
+idkeys.SpakPres <- lapply(1:2, function(x) read_excel(path = file.path(paths$controlled, 
+                                                                       "OSU-18055 shared patient log.xlsx"),
                                              sheet = x))
+
+idkeys.SpakOne <- read.csv(file.path(paths$t.drive, "data", "onecodex", "One Codex Sample Sheet.csv"),
+                           stringsAsFactors = F) %>%
+  select(Name, External.Sample.ID)
 ```
 
 # Keys formatting
 ```{r}
-idkeys.keyon <- lapply(idkeys, function(x) x[, 1:2])
+idkeys.keyon <- lapply(idkeys.SpakPres, function(x) x[, 1:2])
 idkeys.form <- bind_rows(idkeys.keyon) %>%
   gather(-`study ID`, key = "sheet", value = "id") %>%
   rename("patient.id" = "study ID") %>%
   filter(!is.na(id))
 
-patkey <- runcheck %>%
+patkey <- idkeys.SpakOne %>%
   # filter(!is.na(Order)) %>%
-  rename('sequence.id' = "Sample Id",
-         "patient.id" = "Record Id") %>%
+  rename('sequence.id' = "External.Sample.ID",
+         "Sample" = "Name") %>%
+  separate(Sample, sep = "\\.", into = c("patient.id", "Sample")) %>%
   mutate(year = paste0(20, substr(Sample, 1, 2)),
          month = substr(Sample, 3, 4),
          day = substr(Sample, 5,6),
@@ -55,7 +58,7 @@ patkey <- runcheck %>%
 
 ```{r}
 test <- colnames(CoRR)
-test[grep("date", test)]
+test[grep("sppb", test)]
 
 
 CoRR.reduced <- CoRR %>%
@@ -64,6 +67,8 @@ CoRR.reduced <- CoRR %>%
 ```
 
 # Try some matches
+
+## Check matching capability
 
 ```{r}
 combined_obj <- CoRR.reduced %>%
@@ -87,9 +92,17 @@ stoolmatch.res <- list(stooldate.success, stooldate.redfail, stooldate.micfail)
 names(stoolmatch.res) <- c("Successfull.matches", "Redcap.unmatched", "Microbes.unmathced")
 ```
 
+## Use successful matches
+
+```{r}
+clin.successmatch <- stooldate.success %>%
+  left_join(CoRR) 
+```
+
 # Write results
 
 ```{r}
-write_xlsx(stoolmatch.res, file.path(paths$controlled, "test-longitudinal-matching.xlsx"))
+write_xlsx(stoolmatch.res, file.path(paths$controlled, "test-longitudinal-matching_OneCodex.xlsx"))
+write.csv(clin.successmatch, file.path(paths$t.drive, "data", "clinical-with-OCids_limited.csv"))
 ```
 
