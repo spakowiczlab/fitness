@@ -1,0 +1,75 @@
+---
+title: "Concomitant PPI"
+author: "Rebecca Hoyd"
+date: "7/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tibble)
+library(dplyr)
+library(tidyr)
+source("00-paths.R")
+```
+
+
+# Load data
+
+```{r}
+corr <- read.csv("../data/CoRR_concomitent-meds.csv", stringsAsFactors = F)
+
+ppi <- read.table("T:/Labs/Spakowicz/projects/ppiio/data/curated/proton-pump-inhibitors.txt", 
+                  stringsAsFactors = F, sep = "\t") %>%
+    rename("medname" = "V1") %>%
+    mutate(medclass = "PPI")
+
+```
+
+# Functions
+
+```{r}
+determine_ppis <- function(mednames, allmeds){
+  meds.members <- lapply(mednames, function(x) as.data.frame(cbind(
+    allmeds = unique(allmeds[grepl(x,
+                                        allmeds,
+                                        ignore.case = T)]),
+    medname = x))) %>%
+    bind_rows() %>%
+    mutate(allmeds = as.character(allmeds),
+           medname = as.character(medname),
+           medclass = "ppi")
+  
+  return(meds.members)
+}
+  
+```
+
+# Data manipulations
+
+```{r}
+corr.l <- corr %>%
+  select("patient.id", "redcap_event_name", contains("agent")) %>%
+  gather(contains("agent"), key = "mednumber", value = "allmeds") %>%
+  filter(!is.na(allmeds) & allmeds != "")
+
+alagents <- unique(corr.l$allmeds)
+ppis.in.set <- determine_ppis(ppi$medname, alagents)
+
+
+corr.ppilab <- corr.l %>%
+  left_join(ppis.in.set) %>%
+  mutate(ppi = ifelse(is.na(medclass), 0, 1))
+
+corr.ppi.summarize <- corr.ppilab %>%
+  group_by(patient.id, redcap_event_name) %>%
+  summarise(ppi = sum(ppi)) %>%
+  mutate(ppi = ifelse(ppi >= 1, 1, 0))
+```
+
+# Save
+
+```{r}
+write.csv(corr.ppi.summarize, file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"), row.names = F)
+```
