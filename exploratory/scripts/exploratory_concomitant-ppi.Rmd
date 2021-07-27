@@ -25,6 +25,7 @@ ppi <- read.table("T:/Labs/Spakowicz/projects/ppiio/data/curated/proton-pump-inh
     rename("medname" = "V1") %>%
     mutate(medclass = "PPI")
 
+clin <- read.csv(file.path(paths$t.drive, "data", "clinical-with-OCids_limited.csv"), stringsAsFactors = F)
 ```
 
 # Functions
@@ -72,4 +73,15 @@ corr.ppi.summarize <- corr.ppilab %>%
 
 ```{r}
 write.csv(corr.ppi.summarize, file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"), row.names = F)
+```
+
+# Visualize timelines
+
+```{r}
+test <- colnames(clin)
+test[grep("the", test)]
+sort(test)
+
+clin.filt <- clin %>%
+  select(contains("tx"))
 ```

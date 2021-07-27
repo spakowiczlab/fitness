@@ -58,7 +58,7 @@ patkey <- idkeys.SpakOne %>%
 
 ```{r}
 test <- colnames(CoRR)
-test[grep("sppb", test)]
+test[grep("carg", test)]
 
 
 CoRR.reduced <- CoRR %>%
@@ -96,7 +96,9 @@ names(stoolmatch.res) <- c("Successfull.matches", "Redcap.unmatched", "Microbes.
 
 ```{r}
 clin.successmatch <- stooldate.success %>%
-  left_join(CoRR) 
+  left_join(CoRR)  %>%
+  select(-contains("date"), -"last_name", -"labname", -"last_followup", -"lab_collection", -"id",
+         -"dob", -"dodx", -"mrn_id")
 ```
 
 # Write results
@@ -106,3 +108,10 @@ write_xlsx(stoolmatch.res, file.path(paths$controlled, "test-longitudinal-matchi
 write.csv(clin.successmatch, file.path(paths$t.drive, "data", "clinical-with-OCids_limited.csv"))
 ```
 
+# Just CARG scores for Ryan
+
+```{r}
+clin.successmatch %>%
+  select(patient.id, redcap_event_name, sequence.id, carg_score) %>%
+  write.csv(file.path(paths$t.drive, "data", "matched-carg-scores.csv"), row.names = F)
+```
