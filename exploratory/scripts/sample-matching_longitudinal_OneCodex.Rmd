@@ -115,3 +115,50 @@ clin.successmatch %>%
   select(patient.id, redcap_event_name, sequence.id, carg_score) %>%
   write.csv(file.path(paths$t.drive, "data", "matched-carg-scores.csv"), row.names = F)
 ```
+
+# Update for MG resolved matches
+
+```{r}
+resolved.match.raw <- read_excel(file.path(paths$controlled, "test-longitudinal-microbe-matching_RH.mg.xlsx"),
+                                 sheet = 2)
+
+old.seqids <- read_excel("../data/Fitness-samples-tbr-2021.xlsx")
+```
+
+```{r}
+sucpats <- paste0(stooldate.success$patient.id, stooldate.success$redcap_event_name)
+old.seqids.form <- old.seqids %>%
+  mutate(sequence.id = `Sample Id`,
+         Name = paste(`Record Id`, gsub("3$", "1", Sample), sep = ".")) %>%
+  select(sequence.id, Name)
+
+resolved.match <- resolved.match.raw %>%
+  filter(!is.na(sequence.id)) %>%
+  mutate(patsamp = paste0(patient.id, redcap_event_name)) %>%
+  filter(!patsamp %in% sucpats) %>%
+  left_join(old.seqids.form) %>%
+  # select(patient.id, redcap_event_name, Name) %>%
+  left_join(idkeys.SpakOne)
+
+resolved.match$External.Sample.ID[13] <- "FF05466375"
+
+redcap.fixed <- resolved.match %>%
+  mutate(sequence.id = External.Sample.ID) %>%
+  select("id", "patient.id", "redcap_event_name", "stool_sample_date", "sequence.id" ) %>%
+  filter(!is.na(sequence.id))
+```
+
+```{r}
+
+allmatched <- bind_rows(redcap.fixed, stooldate.success) %>%
+  left_join(CoRR)
+
+allmatched.lim <- allmatched %>%
+  select(-contains("date"), -"last_name", -"labname", -"last_followup", -"lab_collection", -"id",
+         -"dob", -"dodx", -"mrn_id")
+
+
+write.csv(allmatched, file.path(paths$controlled, "clinical-OC-matched_resolved.csv"), row.names = F)
+write.csv(allmatched.lim, file.path(paths$t.drive, "clinical-OC-matched_resolved_limited.csv"), row.names = F)
+
+```

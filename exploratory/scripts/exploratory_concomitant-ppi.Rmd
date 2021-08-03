@@ -122,12 +122,13 @@ clin.timein <- clin.filt %>%
          tpoint = ifelse(visit.type == "cycle",
                          gsub(".*_visit_(\\d).*", "\\1", redcap_event_name),
                          cycle),
-         ppi = ifelse(visit.type == "cycle", "Unknown", ppi))
+         ppi = ifelse(visit.type == "cycle", "Unknown", ppi),
+         tpoint.2 = str_pad(tpoint, width = 2, side = "left", pad = "0"))
   # filter(grepl("study", redcap_event_name))
 ```
 
 ```{r}
-ggplot(clin.timein, aes(x = tpoint, y = as.factor(patient.id), shape = as.factor(ppi), color = ici.name, alpha = visit.type)) +
+ggplot(clin.timein, aes(x = tpoint.2, y = as.factor(patient.id), shape = as.factor(ppi), color = ici.name, alpha = visit.type)) +
   geom_point() +
   labs(y = "Patient", x = "Cycle") +
   scale_color_viridis_d(name = "Treatment") +
