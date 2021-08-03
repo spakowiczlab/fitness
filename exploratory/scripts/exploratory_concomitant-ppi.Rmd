@@ -13,6 +13,7 @@ library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(viridis)
+library(readxl)
 source("00-paths.R")
 ```
 
@@ -28,6 +29,8 @@ ppi <- read.table("T:/Labs/Spakowicz/ppiio/data/curated/proton-pump-inhibitors.t
     mutate(medclass = "PPI")
 
 clin <- read.csv(file.path(paths$t.drive, "data", "clinical-with-OCids_limited.csv"), stringsAsFactors = F)
+
+studcy <- read_excel("../data/cycle_study-visit-tracker_v3.xlsx")
 ```
 
 # Functions
@@ -91,12 +94,20 @@ corr.ppi.summarize <- read.csv(file.path(paths$t.drive, "data", "patient_concomm
 ```
 
 ```{r}
-test <- colnames(clin)
-test[grep("the", test)]
-sort(test)
+# test <- colnames(clin)
+# test[grep("the", test)]
+# sort(test)
 
 clin.filt <- clin %>%
   select("patient.id", "sequence.id", "redcap_event_name", contains("tx_reg"))
+
+studcy.l <- studcy %>%
+  gather(-`Patient ID`, key = "study.vis", value = "cycle") %>%
+  mutate(patient.id = `Patient ID`) %>%
+  filter(grepl("cycle", cycle)) %>%
+  mutate(redcap_event_name = paste0("study_visit_", gsub("Study Visit ", "", study.vis), "_arm_2")) %>%
+  separate(cycle, into = c("hold", "cycle")) %>%
+  select(patient.id, redcap_event_name, cycle)
 
 clin.timein <- clin.filt %>%
   mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
@@ -104,18 +115,24 @@ clin.timein <- clin.filt %>%
   drop_na(ici.nums) %>%
   left_join(ICI.meds) %>%
   left_join(corr.ppi.summarize) %>%
+  left_join(studcy.l) %>%
   mutate(ppi = ifelse(is.na(ppi), 0, ppi),
          ici.name = ifelse(is.na(ici.name), "Not.ICI", ici.name),
-         tpoint = gsub(".*_visit_(\\d).*", "\\1", redcap_event_name)) %>%
-  filter(grepl("study", redcap_event_name))
+         visit.type = gsub("(^\\w+)_visit.*", "\\1", redcap_event_name),
+         tpoint = ifelse(visit.type == "cycle",
+                         gsub(".*_visit_(\\d).*", "\\1", redcap_event_name),
+                         cycle),
+         ppi = ifelse(visit.type == "cycle", "Unknown", ppi))
+  # filter(grepl("study", redcap_event_name))
 ```
 
 ```{r}
-ggplot(clin.timein, aes(x = tpoint, y = as.factor(patient.id), shape = as.factor(ppi), color = ici.name)) +
+ggplot(clin.timein, aes(x = tpoint, y = as.factor(patient.id), shape = as.factor(ppi), color = ici.name, alpha = visit.type)) +
   geom_point() +
-  labs(y = "Patient", x = "Study Visit") +
+  labs(y = "Patient", x = "Cycle") +
   scale_color_viridis_d(name = "Treatment") +
   scale_shape(name = "PPI") +
+  scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
   theme_bw() +
   ggsave("../figures/timeline_sample-points_treatment-ppi.png", height = 5, width = 5)
 ```
