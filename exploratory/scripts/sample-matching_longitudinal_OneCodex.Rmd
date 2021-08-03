@@ -159,6 +159,6 @@ allmatched.lim <- allmatched %>%
 
 
 write.csv(allmatched, file.path(paths$controlled, "clinical-OC-matched_resolved.csv"), row.names = F)
-write.csv(allmatched.lim, file.path(paths$t.drive, "clinical-OC-matched_resolved_limited.csv"), row.names = F)
+write.csv(allmatched.lim, file.path(paths$t.drive, "data", "clinical-OC-matched_resolved_limited.csv"), row.names = F)
 
 ```

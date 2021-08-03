@@ -14,6 +14,7 @@ library(tidyr)
 library(ggplot2)
 library(viridis)
 library(readxl)
+library(stringr)
 source("00-paths.R")
 ```
 
@@ -28,7 +29,7 @@ ppi <- read.table("T:/Labs/Spakowicz/ppiio/data/curated/proton-pump-inhibitors.t
     rename("medname" = "V1") %>%
     mutate(medclass = "PPI")
 
-clin <- read.csv(file.path(paths$t.drive, "data", "clinical-with-OCids_limited.csv"), stringsAsFactors = F)
+clin <- read.csv(file.path(paths$t.drive, "data", "clinical-OC-matched_resolved_limited.csv"), stringsAsFactors = F)
 
 studcy <- read_excel("../data/cycle_study-visit-tracker_v3.xlsx")
 ```
