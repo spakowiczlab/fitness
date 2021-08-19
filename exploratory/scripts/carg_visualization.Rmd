@@ -82,7 +82,7 @@ volcano_plot <- ggplot(data = model, aes(x = statistic, y = -log10(p.value))) +
 
 volcano_plot
 
-ggsave("volcano_plot", plot = last_plot(), dev = "tiff", height = 6, width = 6, path = file.path)
+ggsave("volcano_plot.png", plot = last_plot(), dev = "png", height = 6, width = 6, path = file.path)
 ```
 
 ```{r updated barplot for effects on CARG}
@@ -117,5 +117,5 @@ model_minus_strains %>%
 
 bar_graph
 
-ggsave("updated_effects_on_CARG", dev = "tiff", width = 8, height = 8, path = file.path)
+ggsave("updated_effects_on_CARG.png", dev = "png", width = 8, height = 8, path = file.path)
 ```
