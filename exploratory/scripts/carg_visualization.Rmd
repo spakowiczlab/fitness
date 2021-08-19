@@ -14,6 +14,8 @@ library(tidyverse)
 library(dplyr)
 library(ggplot2)
 
+source("00-paths.R")
+
 matched_carg_data <- read_csv("matched-carg-scores.csv")
 model <- read_csv("model_carg-microbes.csv")
 metaphlan <- read.table("OneCodex_merged_output.txt", header = TRUE)
@@ -44,9 +46,10 @@ mic <-
 model.df <- inner_join(mic,clin)
 
 view(model.df)
-
+```
+```{r volcano_plot}
 # # # creating volcano plot
-plot <- ggplot(data = model, aes(x = statistic, y = -log10(p.value))) + 
+volcano_plot <- ggplot(data = model, aes(x = statistic, y = -log10(p.value))) + 
   geom_point(col = "black") + 
   theme_minimal() + 
   geom_hline(yintercept = -log10(0.05), col = "red") +
@@ -77,10 +80,12 @@ plot <- ggplot(data = model, aes(x = statistic, y = -log10(p.value))) +
                                as.character("unclassified Subdoligranulum"),"")), show.legend = FALSE, fontface = "italic", color = "#E6AB02", size = 4, hjust = -0.05, vjust = 0.05) + 
   geom_text(aes(label = ifelse(term == "k__Bacteria.p__Firmicutes.c__Clostridia.o__Clostridiales.f__Lachnospiraceae.g__Dorea.s__Dorea_longicatena", as.character("D. longicatena"),"")), show.legend = FALSE, color = "#E6AB02", fontface = "italic", size = 4, hjust = -0.15, vjust = 0.9)
 
-plot
+volcano_plot
+
+ggsave("volcano_plot", plot = last_plot(), dev = "tiff", height = 6, width = 6, path = file.path)
 ```
 
-```{r bar graph}
+```{r updated barplot for effects on CARG}
 
 library(ggtext)
 library(vegan)
@@ -111,5 +116,6 @@ model_minus_strains %>%
   labs(x = "Taxa", y = "Effect on CARG")
 
 bar_graph
-```
 
+ggsave("updated_effects_on_CARG", dev = "tiff", width = 8, height = 8, path = file.path)
+```
