@@ -22,11 +22,10 @@ library(ggtext)
 
 # Load data
 ```{r}
-data.dir <- "T:/Labs/Spakowicz/fitness/data"
+data.dir <- "T:/Labs/Spakowicz/projects/fitness/data"
 
-clin <- read.csv(file.path(data.dir, "clinical-with-seqids_baseline_OneCodex.csv"), stringsAsFactors = F)
-ra.table <- read.csv(file.path(data.dir, "matched-microbes_baseline_OneCodex.csv"), stringsAsFactors = F) %>%
-  spread(key = clade_name, value = relative.abundance)
+clin <- read.csv(file.path(data.dir, "clinical-with-seqids_baseline.csv"), stringsAsFactors = F)
+ra.table <- read.csv(file.path(data.dir, "matched-microbes_baseline.csv"), stringsAsFactors = F)
 
 ```
 
@@ -95,7 +94,7 @@ mics <- colnames(ra.table[,-1])
 
 ```{r}
 capture.models.univ <- function(outcome, lfun){
-  mods.list <- lapply(mics, function(x) try({glm(as.formula(paste0(outcome, " ~ `", x, "`")), family = lfun, data = modin) %>%
+  mods.list <- lapply(mics, function(x) try({glm(as.formula(paste0(outcome, " ~ ", x)), family = lfun, data = modin) %>%
                         tidy()})
                       )
                       
@@ -114,7 +113,7 @@ carg.mods <- capture.models.univ("carg_score", "gaussian") %>%
 
 head(carg.mods)
 
-write.csv(carg.mods, file.path(data.dir, "model_carg-microbes_OC.csv"), row.names = F)
+write.csv(carg.mods, file.path(data.dir, "model_carg-microbes.csv"), row.names = F)
 ```
 
 ## FS 13
@@ -125,7 +124,7 @@ fs13.mods <- capture.models.univ("bin.fs13", "binomial") %>%
   arrange(p.value)
 
 head(fs13.mods)
-write.csv(fs13.mods, file.path(data.dir, "model_bin.fs13-microbes_OC.csv"), row.names = F)
+write.csv(fs13.mods, file.path(data.dir, "model_bin.fs13-microbes.csv"), row.names = F)
 ```
 
 ## SPPB
@@ -137,7 +136,7 @@ sppb.mods <- capture.models.univ("bin.sppb", "binomial") %>%
 
 head(sppb.mods)
 
-write.csv(sppb.mods, file.path(data.dir, "model_bin.sppb-microbes_OC.csv"), row.names = F)
+write.csv(sppb.mods, file.path(data.dir, "model_bin.sppb-microbes.csv"), row.names = F)
 ```
 
 ## PROMIS
@@ -149,7 +148,7 @@ promis.mods <- capture.models.univ("promis_score", "gaussian") %>%
 
 head(promis.mods)
 
-write.csv(promis.mods, file.path(data.dir, "model_promis-microbes_OC.csv"), row.names = F)
+write.csv(promis.mods, file.path(data.dir, "model_promis-microbes.csv"), row.names = F)
 ```
 
 # Visualize modelling results
@@ -166,15 +165,15 @@ carg.bigeffect <- carg.mods %>%
          taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
   separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
   mutate(taxname = gsub("_", " ", taxname),
-  #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
-  #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
-         taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname))
-  #        taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
-  # mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
-  #                       "Unclassified<br/> Peptostreptococcaceae", taxname))
+         taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
+         taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
+         taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname),
+         taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
+  mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
+                        "Unclassified<br/> Peptostreptococcaceae", taxname))
 
 carg.barin <- carg.bigeffect %>%
-  # filter(effect.rank <= 7) %>%
+  filter(effect.rank <= 7) %>%
   arrange(estimate)
 carg.micord <- carg.barin$taxname
 
@@ -191,5 +190,5 @@ carg.barin %>%
         # axis.text.x = element_blank()
         ) +
   coord_flip() +
-  ggsave("../figures/barplot_carg-effects_OC.pdf", height = 4, width = 6)
+  ggsave("../figures/barplot_carg-effects.pdf", height = 4, width = 6)
 ```

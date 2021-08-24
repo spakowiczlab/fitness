@@ -174,7 +174,7 @@ carg.bigeffect <- carg.mods %>%
   #                       "Unclassified<br/> Peptostreptococcaceae", taxname))
 
 carg.barin <- carg.bigeffect %>%
-  # filter(effect.rank <= 7) %>%
+  filter(effect.rank <= 7) %>%
   arrange(estimate)
 carg.micord <- carg.barin$taxname
 

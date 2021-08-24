@@ -1,0 +1,65 @@
+---
+title: "carg-modeling"
+author: "Dan Spakowicz"
+date: "8/3/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Load required packages
+library(tidyverse)
+
+source("00-paths.R")
+```
+
+# Read in and format clinical data
+
+```{r}
+myBoxfitness <- "C:/Users/spak01/Box/osu/projects/fitness"
+
+x <- read_csv(file.path(myBoxfitness, "Data", "clinical", "deidentified", "matched-carg-scores.csv"))
+
+
+clin <- 
+  x %>%
+  drop_na(carg_score) %>%
+  mutate(patient.id = as.factor(patient.id))
+
+summary(clin)
+```
+
+```{r}
+clin %>%
+  ggplot(aes(x = carg_score)) +
+  geom_histogram()
+```
+
+```{r}
+clin %>%
+  ggplot(aes(x = carg_score)) +
+  geom_density()
+```
+
+# Match to microbiome data
+
+```{r}
+y <- read.table(file.path(myBoxfitness, 
+                            "Data", 
+                            "sequencing", 
+                            "onecodex", 
+                            "merged_metaphlan_output.txt"),
+                  header = TRUE)
+
+mic <- 
+  y %>%
+  select(-NCBI_tax_id) %>%
+  gather(-clade_name, key = "sequence.id", value = "abundance") %>%
+  spread(key = "clade_name", value = "abundance")
+
+model.df <- 
+  inner_join(mic, clin)
+
+```
+
