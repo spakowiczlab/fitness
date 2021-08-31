@@ -29,6 +29,8 @@ ppi <- read.table("T:/Labs/Spakowicz/ppiio/data/curated/proton-pump-inhibitors.t
     rename("medname" = "V1") %>%
     mutate(medclass = "PPI")
 
+ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
+
 clin <- read.csv(file.path(paths$t.drive, "data", "clinical-OC-matched_resolved_limited.csv"), stringsAsFactors = F)
 
 studcy <- read_excel("../data/cycle_study-visit-tracker_v3.xlsx")
@@ -88,9 +90,10 @@ write.csv(corr.ppi.summarize, file.path(paths$t.drive, "data", "patient_concommi
 ## Get treatment groups
 
 ```{r}
-ICI.meds <- as.data.frame(cbind(ici.name = c("CTLA4", rep("PD1", 4), "PDL1"),
-                                ici.nums = c(50,55,56,65,82,85)),
-                          stringsAsFactors = F)
+ICI.meds <- ICI.meds.raw %>%
+  rename(ici.nums = ...1,
+         ici.name = `Category (chemo, chemo + io, io, targeted, targeted+chemo)`) %>%
+  mutate(ici.name =str_replace_all(ici.name, "\\s", ""))
 corr.ppi.summarize <- read.csv(file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"), stringsAsFactors = F)
 ```
 
@@ -114,6 +117,7 @@ clin.timein <- clin.filt %>%
   mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
   select(patient.id, sequence.id, redcap_event_name, ici.nums) %>%
   drop_na(ici.nums) %>%
+  mutate(ici.nums = as.numeric(ici.nums)) %>%
   left_join(ICI.meds) %>%
   left_join(corr.ppi.summarize) %>%
   left_join(studcy.l) %>%
