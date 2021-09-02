@@ -134,9 +134,9 @@ clin.timein <- clin.filt %>%
 
 ```{r}
 ggplot(clin.timein, aes(x = tpoint.2, y = as.factor(patient.id), shape = as.factor(ppi), color = ici.name, alpha = visit.type)) +
-  geom_point() +
+  geom_point(size = 3) +
   labs(y = "Patient", x = "Cycle") +
-  scale_color_viridis_d(name = "Treatment") +
+  scale_color_viridis_d(name = "Treatment", option = "turbo") +
   scale_shape(name = "PPI") +
   scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
   theme_bw() +
