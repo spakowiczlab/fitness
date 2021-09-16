@@ -32,6 +32,7 @@ ppi <- read.table("T:/Labs/Spakowicz/ppiio/data/curated/proton-pump-inhibitors.t
 ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
 
 clin <- read.csv(file.path(paths$t.drive, "data", "clinical-OC-matched_resolved_limited.csv"), stringsAsFactors = F)
+clin.withdate <- read.csv(file.path(paths$controlled, "clinical-OC-matched_resolved.csv"), stringsAsFactors = F)
 
 studcy <- read_excel("../data/cycle_study-visit-tracker_v3.xlsx")
 ```
@@ -60,29 +61,31 @@ determine_ppis <- function(mednames, allmeds){
 ## Data manipulations
 
 ```{r}
-corr.l <- corr %>%
-  select("patient.id", "redcap_event_name", contains("agent")) %>%
-  gather(contains("agent"), key = "mednumber", value = "allmeds") %>%
-  filter(!is.na(allmeds) & allmeds != "")
-
-alagents <- unique(corr.l$allmeds)
-ppis.in.set <- determine_ppis(ppi$medname, alagents)
-
-
-corr.ppilab <- corr.l %>%
-  left_join(ppis.in.set) %>%
-  mutate(ppi = ifelse(is.na(medclass), 0, 1))
-
-corr.ppi.summarize <- corr.ppilab %>%
-  group_by(patient.id, redcap_event_name) %>%
-  summarise(ppi = sum(ppi)) %>%
-  mutate(ppi = ifelse(ppi >= 1, 1, 0))
+# corr.l <- corr %>%
+#   select("patient.id", "redcap_event_name", contains("agent")) %>%
+#   gather(contains("agent"), key = "mednumber", value = "allmeds") %>%
+#   filter(!is.na(allmeds) & allmeds != "")
+# 
+# alagents <- unique(corr.l$allmeds)
+# ppis.in.set <- determine_ppis(ppi$medname, alagents)
+# 
+# 
+# corr.ppilab <- corr.l %>%
+#   left_join(ppis.in.set) %>%
+#   mutate(ppi = ifelse(is.na(medclass), 0, 1))
+# 
+# corr.ppi.summarize <- corr.ppilab %>%
+#   group_by(patient.id, redcap_event_name) %>%
+#   summarise(ppi = sum(ppi)) %>%
+#   mutate(ppi = ifelse(ppi >= 1, 1, 0))
 ```
 
 ## Save
 
 ```{r}
-write.csv(corr.ppi.summarize, file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"), row.names = F)
+# write.csv(corr.ppi.summarize, file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"), row.names = F)
+
+corr.ppi.summarize <- read.csv(file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"))
 ```
 
 # Visualize timelines
@@ -94,7 +97,6 @@ ICI.meds <- ICI.meds.raw %>%
   rename(ici.nums = ...1,
          ici.name = `Category (chemo, chemo + io, io, targeted, targeted+chemo)`) %>%
   mutate(ici.name =str_replace_all(ici.name, "\\s", ""))
-corr.ppi.summarize <- read.csv(file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"), stringsAsFactors = F)
 ```
 
 ```{r}
@@ -141,4 +143,50 @@ ggplot(clin.timein, aes(x = tpoint.2, y = as.factor(patient.id), shape = as.fact
   scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
   theme_bw() +
   ggsave("../figures/timeline_sample-points_treatment-ppi.png", height = 5, width = 5)
+```
+
+# Make a version where x=days
+
+```{r}
+clin.filt.days <- clin.withdate %>%
+  select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", contains("tx_reg")) %>%
+  group_by(patient.id) %>%
+  mutate(stool_sample_date = as.Date(stool_sample_date),
+         earliest_day = min(stool_sample_date),
+         elapsed.days = as.numeric(stool_sample_date - earliest_day)) %>%
+  ungroup() %>%
+  select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", "earliest_day", "elapsed.days", contains("tx_reg"))
+
+clin.timein.days <- clin.filt.days %>%
+  mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
+  select(patient.id, sequence.id, redcap_event_name, elapsed.days, ici.nums) %>%
+  drop_na(ici.nums) %>%
+  mutate(ici.nums = as.numeric(ici.nums)) %>%
+  left_join(ICI.meds) %>%
+  left_join(corr.ppi.summarize) %>%
+  left_join(studcy.l) %>%
+  mutate(ppi = ifelse(is.na(ppi), 0, ppi),
+         ici.name = ifelse(is.na(ici.name), "Not.ICI", ici.name),
+         visit.type = gsub("(^\\w+)_visit.*", "\\1", redcap_event_name),
+         tpoint = as.numeric(ifelse(visit.type == "cycle",
+                         gsub("cycle_visit_(.*)_arm.*", "\\1", redcap_event_name),
+                         cycle)),
+         ppi = ifelse(visit.type == "cycle", "Unknown", ppi),
+         ) %>%
+  group_by(patient.id) %>%
+  mutate(minimun_cycle = min(tpoint),
+         ylabs = paste0(patient.id, "(", minimun_cycle, ")")) %>%
+  ungroup()
+```
+
+```{r}
+ggplot(clin.timein.days, aes(x = elapsed.days, y = as.factor(ylabs), shape = as.factor(ppi), color = ici.name,
+                             alpha = visit.type)) +
+  geom_point(size = 3) +
+  labs(y = "Patient", x = "Days from earliest sample") +
+  scale_color_viridis_d(name = "Treatment", option = "turbo") +
+  scale_shape(name = "PPI") +
+  scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
+  theme_bw() +
+  ggsave("../figures/timeline_sample-points_treatment-ppi_days.png", height = 5, width = 5)
 ```
