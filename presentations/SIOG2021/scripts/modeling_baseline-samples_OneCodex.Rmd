@@ -69,6 +69,14 @@ table1 <- CreateTableOne(vars = listVars,
 table1
 ```
 
+```{r}
+tab1Mat <- print(table1, quote = FALSE, noSpaces = TRUE, printToggle = FALSE)
+
+write.csv(tab1Mat, file = "../figures/Table1.csv")
+
+```
+
+
 # Modeling
 
 ## Which vars to try?
