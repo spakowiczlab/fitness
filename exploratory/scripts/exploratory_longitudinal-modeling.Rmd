@@ -1,0 +1,73 @@
+---
+title: "Concomitant PPI"
+author: "Rebecca Hoyd"
+date: "7/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(viridis)
+library(readxl)
+library(stringr)
+source("00-paths.R")
+```
+
+
+# Load data
+
+```{r}
+
+clin <- read.csv(file.path(paths$t.drive, "data", "clinical-OC-matched_resolved_limited.csv"), stringsAsFactors = F)
+clin.withdate <- read.csv(file.path(paths$controlled, "clinical-OC-matched_resolved.csv"), stringsAsFactors = F)
+
+# studcy <- read_excel("../data/cycle_study-visit-tracker_v3.xlsx")
+```
+
+
+# Visualize timelines
+
+```{r}
+clin.filt.days <- clin%>%
+  select("patient.id", "sequence.id", "redcap_event_name", 
+         # "stool_sample_date", 
+         "sppb_score", "promis_score") %>%
+  group_by(patient.id) %>%
+  ungroup() %>%
+  filter(grepl("study", redcap_event_name)) %>%
+  mutate(visit = gsub("study_visit_(\\d+)_arm_2", "\\1", redcap_event_name)) %>%
+  select("patient.id", "sequence.id", "redcap_event_name", "visit",
+         # "stool_sample_date", "earliest_day", "elapsed.days", 
+         "sppb_score", "promis_score") %>%
+  add_count(patient.id) %>%
+  filter(n > 1)
+
+clin.filt.days %>%
+  ggplot(aes(x = visit,y = sppb_score, group = as.factor(patient.id), color = as.factor(patient.id))) +
+  geom_line() +
+  geom_point()
+ggsave("../figures/timeline_sppb.png")
+
+clin.filt.days %>%
+  ggplot(aes(x = visit,y = promis_score, group = as.factor(patient.id), color = as.factor(patient.id))) +
+  geom_line() +
+  geom_point()
+ggsave("../figures/timeline_promis.png")
+```
+
+```{r}
+ggplot(clin.timein.days, aes(x = elapsed.days, y = as.factor(ylabs), shape = as.factor(ppi), color = ici.name,
+                             alpha = visit.type)) +
+  geom_point(size = 3) +
+  labs(y = "Patient", x = "Days from earliest sample") +
+  scale_color_viridis_d(name = "Treatment", option = "turbo") +
+  scale_shape(name = "PPI") +
+  scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
+  theme_bw() +
+  ggsave("../figures/timeline_sample-points_treatment-ppi_days.png", height = 5, width = 5)
+```

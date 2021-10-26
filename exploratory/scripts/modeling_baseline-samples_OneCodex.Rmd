@@ -154,6 +154,14 @@ write.csv(promis.mods, file.path(data.dir, "model_promis-microbes_OC.csv"), row.
 
 # Visualize modelling results
 
+```{r}
+carg.mods <- read.csv(file.path(data.dir, "model_carg-microbes_OC.csv"), stringsAsFactors = F)
+sppb.mods <- read.csv(file.path(data.dir, "model_bin.sppb-microbes_OC.csv"), stringsAsFactors = F)
+promis.mods <- read.csv(file.path(data.dir, "model_promis-microbes_OC.csv"), stringsAsFactors = F)
+fs13.mods <- read.csv(file.path(data.dir, "model_bin.fs13-microbes_OC.csv"), stringsAsFactors = F)
+
+```
+
 ## CARG
 
 ```{r}
@@ -192,4 +200,124 @@ carg.barin %>%
         ) +
   coord_flip() +
   ggsave("../figures/barplot_carg-effects_OC.pdf", height = 4, width = 6)
+```
+
+## PROMIS
+
+```{r}
+promis.bigeffect <- promis.mods %>%
+  mutate(abseffect = abs(estimate)) %>%
+  filter(p.value < 0.05) %>%
+  arrange(desc(abseffect)) %>%
+  filter(!grepl("\\.t__", term)) %>%
+  mutate(effect.rank = row_number(),
+         taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
+  separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
+  mutate(taxname = gsub("_", " ", taxname),
+  #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
+  #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
+         taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname))
+  #        taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
+  # mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
+  #                       "Unclassified<br/> Peptostreptococcaceae", taxname))
+
+promis.barin <- promis.bigeffect %>%
+  # filter(effect.rank <= 7) %>%
+  arrange(estimate)
+promis.micord <- promis.barin$taxname
+
+promis.barin %>%
+  ggplot(aes(x = fct_relevel(taxname, promis.micord), y = estimate, fill = taxlev)) +
+  geom_col() +
+  scale_fill_viridis(discrete = T, name = "Taxonomy level", breaks = c("f", "g", "s"),
+                     labels = c("Family", "Genus", "Species")) +
+  labs(y = "Effect on PROMIS", x = "") +
+  # scale_x_discrete(breaks = carg.barin$taxname, labels = italic.names) +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(size = 12)
+        # axis.ticks.x = element_blank(),
+        # axis.text.x = element_blank()
+        ) +
+  coord_flip() +
+  ggsave("../figures/barplot_promis-effects_OC.pdf", height = 4, width = 6)
+```
+
+## SPPB
+
+```{r}
+sppb.bigeffect <- sppb.mods %>%
+  mutate(abseffect = abs(estimate)) %>%
+  filter(p.value < 0.05) %>%
+  arrange(desc(abseffect)) %>%
+  filter(!grepl("\\.t__", term)) %>%
+  mutate(effect.rank = row_number(),
+         taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
+  separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
+  mutate(taxname = gsub("_", " ", taxname),
+  #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
+  #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
+         taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname))
+  #        taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
+  # mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
+  #                       "Unclassified<br/> Peptostreptococcaceae", taxname))
+
+sppb.barin <- sppb.bigeffect %>%
+  # filter(effect.rank <= 7) %>%
+  arrange(estimate)
+sppb.micord <- sppb.barin$taxname
+
+sppb.barin %>%
+  ggplot(aes(x = fct_relevel(taxname, sppb.micord), y = estimate, fill = taxlev)) +
+  geom_col() +
+  scale_fill_viridis(discrete = T, name = "Taxonomy level", breaks = c("f", "g", "s"),
+                     labels = c("Family", "Genus", "Species")) +
+  labs(y = "Effect on SPPB", x = "") +
+  # scale_x_discrete(breaks = carg.barin$taxname, labels = italic.names) +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(size = 12)
+        # axis.ticks.x = element_blank(),
+        # axis.text.x = element_blank()
+        ) +
+  coord_flip() +
+  ggsave("../figures/barplot_sppb-effects_OC.pdf", height = 4, width = 6)
+```
+
+## FS 13
+
+```{r}
+fs13.bigeffect <- fs13.mods %>%
+  mutate(abseffect = abs(estimate)) %>%
+  filter(p.value < 0.05) %>%
+  arrange(desc(abseffect)) %>%
+  filter(!grepl("\\.t__", term)) %>%
+  mutate(effect.rank = row_number(),
+         taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
+  separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
+  mutate(taxname = gsub("_", " ", taxname),
+  #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
+  #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
+         taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname))
+  #        taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
+  # mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
+  #                       "Unclassified<br/> Peptostreptococcaceae", taxname))
+
+fs13.barin <- fs13.bigeffect %>%
+  # filter(effect.rank <= 7) %>%
+  arrange(estimate)
+fs13.micord <- fs13.barin$taxname
+
+fs13.barin %>%
+  ggplot(aes(x = fct_relevel(taxname, fs13.micord), y = estimate, fill = taxlev)) +
+  geom_col() +
+  scale_fill_viridis(discrete = T, name = "Taxonomy level", breaks = c("f", "g", "s"),
+                     labels = c("Family", "Genus", "Species")) +
+  labs(y = "Effect on FS 13", x = "") +
+  # scale_x_discrete(breaks = carg.barin$taxname, labels = italic.names) +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(size = 12)
+        # axis.ticks.x = element_blank(),
+        # axis.text.x = element_blank()
+        ) +
+  coord_flip() +
+  ggsave("../figures/barplot_fs13-effects_OC.pdf", height = 4, width = 6)
 ```
