@@ -173,7 +173,7 @@ carg.bigeffect <- carg.mods %>%
   mutate(effect.rank = row_number(),
          taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
   separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
-  mutate(taxname = gsub("_", " ", taxname),
+  mutate(taxname = gsub("_", " ", gsub("`", "", taxname)),
   #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
   #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
          taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname))
@@ -199,7 +199,7 @@ carg.barin %>%
         # axis.text.x = element_blank()
         ) +
   coord_flip() +
-  ggsave("../figures/barplot_carg-effects_OC.pdf", height = 4, width = 6)
+  ggsave("../figures/barplot_carg-effects_OC.png", height = 4, width = 6)
 ```
 
 ## PROMIS
@@ -213,13 +213,14 @@ promis.bigeffect <- promis.mods %>%
   mutate(effect.rank = row_number(),
          taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
   separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
-  mutate(taxname = gsub("_", " ", taxname),
-  #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
-  #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
+  mutate(taxname = gsub("_", " ", gsub("`", "", taxname)),
+         taxname = ifelse(estimate > 0, paste0(taxname, "*"), taxname),
+         #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
+         #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
          taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname))
-  #        taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
-  # mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
-  #                       "Unclassified<br/> Peptostreptococcaceae", taxname))
+#        taxname = gsub("<i>Unclassified ", "Unclassified <i>", taxname)) %>%
+# mutate(taxname = gsub("Unclassified <i>Peptostreptococcaceae</i>", 
+#                       "Unclassified<br/> Peptostreptococcaceae", taxname))
 
 promis.barin <- promis.bigeffect %>%
   # filter(effect.rank <= 7) %>%
@@ -227,10 +228,12 @@ promis.barin <- promis.bigeffect %>%
 promis.micord <- promis.barin$taxname
 
 promis.barin %>%
-  ggplot(aes(x = fct_relevel(taxname, promis.micord), y = estimate, fill = taxlev)) +
+  ggplot(aes(x = fct_relevel(taxname, promis.micord), y = estimate, fill = taxlev, color = taxlev)) +
   geom_col() +
-  scale_fill_viridis(discrete = T, name = "Taxonomy level", breaks = c("f", "g", "s"),
-                     labels = c("Family", "Genus", "Species")) +
+  geom_point() +
+  scale_fill_viridis_d(name = "Taxonomy level", breaks = c("c", "f", "g", "s", "o"),
+                     labels = c("Class", "Family", "Genus", "Species", "Order"),
+                     aesthetics = c("color", "fill")) +
   labs(y = "Effect on PROMIS", x = "") +
   # scale_x_discrete(breaks = carg.barin$taxname, labels = italic.names) +
   theme_classic() +
@@ -238,8 +241,37 @@ promis.barin %>%
         # axis.ticks.x = element_blank(),
         # axis.text.x = element_blank()
         ) +
+  geom_hline(yintercept = 0, lty = 2) +
   coord_flip() +
-  ggsave("../figures/barplot_promis-effects_OC.pdf", height = 4, width = 6)
+  ggsave("../figures/barplot_promis-effects_OC.png", height = 4, width = 6)
+```
+
+## Try logging effects
+
+```{r}
+promis.barin.log <- promis.barin %>%
+  mutate(est.logged = log(abs(estimate)),
+         est.dir = ifelse(estimate < 0, -1, 1),
+         est.logged.dir = est.logged * est.dir) %>%
+  filter(estimate < 0 | estimate > 1)
+promis.micord.log <- promis.barin.log$taxname
+
+promis.barin.log %>%
+  ggplot(aes(x = fct_relevel(taxname, promis.micord.log), y = est.logged.dir, fill = taxlev, color = taxlev)) +
+  geom_col() +
+  scale_fill_viridis_d(name = "Taxonomy level", breaks = c("c", "f", "g", "s", "o"),
+                     labels = c("Class", "Family", "Genus", "Species", "Order"),
+                     aesthetics = c("color", "fill")) +
+  labs(y = "Effect on PROMIS", x = "") +
+  # scale_x_discrete(breaks = carg.barin$taxname, labels = italic.names) +
+  theme_classic() +
+  theme(axis.text.y = element_markdown(size = 12)
+        # axis.ticks.x = element_blank(),
+        # axis.text.x = element_blank()
+        ) +
+  geom_hline(yintercept = 0, lty = 2) +
+  coord_flip() +
+  ggsave("../figures/barplot_promis-effects_OC_logged.png", height = 4, width = 6)
 ```
 
 ## SPPB
@@ -253,7 +285,7 @@ sppb.bigeffect <- sppb.mods %>%
   mutate(effect.rank = row_number(),
          taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
   separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
-  mutate(taxname = gsub("_", " ", taxname),
+  mutate(taxname = gsub("_", " ", gsub("`", "", taxname)),
   #        taxname = gsub("(.*) noname", "Unclassified \\1", taxname),
   #        taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
          taxname = ifelse(taxlev %in% c("s", "g"), paste0("<i>", taxname, "</i>"), taxname))
@@ -279,7 +311,7 @@ sppb.barin %>%
         # axis.text.x = element_blank()
         ) +
   coord_flip() +
-  ggsave("../figures/barplot_sppb-effects_OC.pdf", height = 4, width = 6)
+  ggsave("../figures/barplot_sppb-effects_OC.png", height = 4, width = 6)
 ```
 
 ## FS 13
@@ -319,5 +351,5 @@ fs13.barin %>%
         # axis.text.x = element_blank()
         ) +
   coord_flip() +
-  ggsave("../figures/barplot_fs13-effects_OC.pdf", height = 4, width = 6)
+  ggsave("../figures/barplot_fs13-effects_OC.png", height = 4, width = 6)
 ```
