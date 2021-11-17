@@ -126,5 +126,21 @@ long_mods <-function(outcome, mics.vec){
 
 ```{r}
 sppb.mods <- long_mods("sppb_score", mic.names)
+promis.mods <- long_mods("promis_score", mic.names)
+```
+
+```{r}
+sppb.sig <- sppb.mods %>%
+  filter(term == microbe & `Pr(>|t|)` < 0.05)
+promis.sig <- promis.mods %>%
+  filter(term == microbe & `Pr(>|t|)` < 0.05)
+
+head(sppb.sig)
+head(promis.sig)
+```
+
+```{r}
+write.csv(sppb.sig, "../data/modelling_sppb-longitudinal_sig.csv", row.names = F)
+write.csv(promis.sig, "../data/modelling_promis-longitudinal_sig.csv", row.names = F)
 ```
 
