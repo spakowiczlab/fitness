@@ -15,6 +15,10 @@ library(ggplot2)
 library(viridis)
 library(readxl)
 library(stringr)
+library(lme4)
+library(lmerTest)
+library(broom)
+library(rlist)
 source("00-paths.R")
 ```
 
@@ -61,13 +65,66 @@ ggsave("../figures/timeline_promis.png")
 ```
 
 ```{r}
-ggplot(clin.timein.days, aes(x = elapsed.days, y = as.factor(ylabs), shape = as.factor(ppi), color = ici.name,
-                             alpha = visit.type)) +
-  geom_point(size = 3) +
-  labs(y = "Patient", x = "Days from earliest sample") +
-  scale_color_viridis_d(name = "Treatment", option = "turbo") +
-  scale_shape(name = "PPI") +
-  scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
-  theme_bw() +
-  ggsave("../figures/timeline_sample-points_treatment-ppi_days.png", height = 5, width = 5)
+# ggplot(clin.timein.days, aes(x = elapsed.days, y = as.factor(ylabs), shape = as.factor(ppi), color = ici.name,
+#                              alpha = visit.type)) +
+#   geom_point(size = 3) +
+#   labs(y = "Patient", x = "Days from earliest sample") +
+#   scale_color_viridis_d(name = "Treatment", option = "turbo") +
+#   scale_shape(name = "PPI") +
+#   scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
+#   theme_bw() +
+#   ggsave("../figures/timeline_sample-points_treatment-ppi_days.png", height = 5, width = 5)
 ```
+
+# Set up modeling
+
+## Get + format modelling data
+
+```{r}
+mics <- read.table("T:/Labs/Spakowicz/fitness/data/merged_metaphlan_output.txt", sep = "\t", header = T, stringsAsFactors = F)
+
+mics.form <- mics %>%
+  select(-NCBI_tax_id) %>%
+  mutate(clade_name = make.names(clade_name)) %>%
+  gather(-clade_name, key = "sequence.id", value = "RA") %>%
+  spread(key = clade_name, value = RA)
+
+mic.names <- colnames(mics.form[,-1])
+```
+
+```{r}
+modelin <- clin.withdate %>%
+  select(patient.id, redcap_event_name, sppb_score, promis_score, stool_sample_date, sequence.id) %>%
+  filter(!is.na(sppb_score) &!is.na(stool_sample_date)) %>%
+  mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+  group_by(patient.id) %>%
+  mutate(min.date = min(stool_sample_date)) %>%
+  ungroup() %>%
+  mutate(rel.date = as.numeric(min.date - stool_sample_date)) %>%
+  left_join(mics.form)
+  
+```
+## Modeling function
+
+
+```{r}
+long_mods <-function(outcome, mics.vec){
+  
+  mods <- lapply(mics.vec, function(x) try(summary(lmer(formula = as.formula(paste0(outcome,
+                                                                                    " ~ ",
+                                                                                    x,
+                                                                                    " + rel.date + (1|patient.id)")),
+                                                        data = modelin))$coefficients %>%
+                                             as.data.frame() %>%
+                                             rownames_to_column(var = "term") %>%
+                                             mutate(microbe = x)))
+  mods.clean <- bind_rows(mods) %>%
+    arrange(`Pr(>|t|)`)
+  return(mods.clean)
+}
+```
+
+```{r}
+sppb.mods <- long_mods("sppb_score", mic.names)
+```
+
