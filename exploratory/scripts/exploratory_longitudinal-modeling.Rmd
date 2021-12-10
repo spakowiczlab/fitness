@@ -19,6 +19,8 @@ library(lme4)
 library(lmerTest)
 library(broom)
 library(rlist)
+library(ggforce)
+library(forcats)
 source("00-paths.R")
 ```
 
@@ -100,7 +102,7 @@ modelin <- clin.withdate %>%
   group_by(patient.id) %>%
   mutate(min.date = min(stool_sample_date)) %>%
   ungroup() %>%
-  mutate(rel.date = as.numeric(min.date - stool_sample_date)) %>%
+  mutate(rel.date = as.numeric(stool_sample_date - min.date)) %>%
   left_join(mics.form)
   
 ```
@@ -144,3 +146,99 @@ write.csv(sppb.sig, "../data/modelling_sppb-longitudinal_sig.csv", row.names = F
 write.csv(promis.sig, "../data/modelling_promis-longitudinal_sig.csv", row.names = F)
 ```
 
+# Try plotting
+
+```{r}
+sppb.sig <- read.csv("../data/modelling_sppb-longitudinal_sig.csv", stringsAsFactors = F)
+```
+
+## Format data
+
+```{r}
+sppb.possig <- sppb.sig %>%
+  filter(Estimate >= 0)
+
+sppb.baseline <- modelin %>%
+  filter(rel.date ==0) %>%
+  mutate(sppb.baseline = sppb_score) %>%
+  select(patient.id, sppb.baseline)
+
+plotin <- modelin %>%
+  select(c("patient.id", "sppb_score", "rel.date", sppb.sig$term)) %>%
+  left_join(sppb.baseline) %>%
+  mutate(sppb_norm = sppb_score - sppb.baseline) %>%
+  select(-sppb_score, -sppb.baseline) %>%
+  gather(c("sppb_norm", sppb.sig$term), key = "term", value = "count") %>%
+  mutate(measure = ifelse(term == "sppb_norm", "SPPB", "Microbe"),
+         effect.dir = ifelse(term %in% sppb.possig$term, "Positive",
+                             ifelse(term == "sppb_norm", NA, "Negative"))) %>%
+  arrange(rel.date)
+
+sig.plot.ord <- sppb.sig %>%
+  arrange(Estimate)
+sig.plot.ord <- sig.plot.ord$term
+```
+
+```{r}
+modelin %>%
+  ggplot(aes(x = rel.date, y = sppb_score)) +
+  geom_point()+
+  stat_smooth() +
+  ggsave("../figures/scatter_sppb-time.png")
+
+modelin %>%
+  ggplot(aes(x = rel.date)) +
+  geom_histogram()
+
+table(modelin$rel.date == 0)
+```
+
+# Plot as lines
+
+```{r}
+# saveRDS(plotin, "../data/sppb_longitudinal-lineplot-input.RDS")
+
+plotin %>%
+  ggplot(aes(x = rel.date, y = count, group = fct_relevel(term, sig.plot.ord), 
+             color = effect.dir, fill = effect.dir)) +
+  facet_col(vars(fct_relevel(measure, "SPPB")), scales = "free_y", space = "free") +
+  # facet_col(vars(effect.dir), space = "free", scales = "free_y") +
+  geom_point() +
+  stat_smooth(alpha = .2) +
+  # stat_smooth(aes(group = measure)) + 
+  scale_color_viridis_d(aesthetics = c("color", "fill"), na.value = "grey50", name = "Effect \ndirection") +
+  labs(x = "", y = "") + 
+  theme_bw() +
+  ggsave("../figures/sppb_longitudinal.png")
+```
+
+# Plot as lollipop
+
+```{r}
+choose.taxa <- c("k__Bacteria.p__Firmicutes.c__Clostridia.o__Clostridiales.f__Peptostreptococcaceae.g__Romboutsia",
+                "k__Bacteria.p__Firmicutes.c__Clostridia.o__Clostridiales.f__Lachnospiraceae.g__Lachnoclostridium.s__Lachnoclostridium_sp_An138",
+                "k__Bacteria.p__Firmicutes.c__Erysipelotrichia.o__Erysipelotrichales.f__Erysipelotrichaceae.g__Absiella",
+                "k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Bacteroidaceae.g__Bacteroides.s__Bacteroides_stercorirosoris",
+                "k__Bacteria.p__Firmicutes.c__Bacilli.o__Lactobacillales.f__Lactobacillaceae.g__Lactobacillus.s__Lactobacillus_rogosae", 
+                "k__Bacteria.p__Candidatus_Melainabacteria")
+
+
+lollipop.in <- sppb.sig %>%
+  filter(term %in% choose.taxa) %>%
+  mutate(display.name = gsub("_", " ", gsub(".*__(.*)", "\\1", term)),
+         effect.dir = ifelse(term %in% sppb.possig$term, "Positive", "Negative")) %>%
+  arrange(Estimate)
+lolli.ord <- lollipop.in$display.name
+```
+
+```{r}
+lollipop.in %>%
+  ggplot(aes(x = Estimate, y = fct_relevel(display.name, lolli.ord),
+             yend = fct_relevel(display.name, lolli.ord), color = effect.dir)) +
+  geom_segment(xend = 0, color = "black") +
+  geom_point(size = 5) +
+  scale_color_viridis_d(name = "") +
+  labs(x = "Effect size", y = "") +
+  theme_bw() +
+  ggsave("../figures/lollipop_sppb-longitudinal.png")
+```
