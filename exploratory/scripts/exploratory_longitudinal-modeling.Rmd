@@ -183,7 +183,7 @@ sig.plot.ord <- sig.plot.ord$term
 modelin %>%
   ggplot(aes(x = rel.date, y = sppb_score)) +
   geom_point()+
-  stat_smooth() +
+  stat_smooth() 
   ggsave("../figures/scatter_sppb-time.png")
 
 modelin %>%
@@ -239,6 +239,6 @@ lollipop.in %>%
   geom_point(size = 5) +
   scale_color_viridis_d(name = "") +
   labs(x = "Effect size", y = "") +
-  theme_bw() +
+  theme_bw() 
   ggsave("../figures/lollipop_sppb-longitudinal.png")
 ```
