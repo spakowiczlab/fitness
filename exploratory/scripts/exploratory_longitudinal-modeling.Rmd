@@ -183,7 +183,7 @@ sig.plot.ord <- sig.plot.ord$term
 modelin %>%
   ggplot(aes(x = rel.date, y = sppb_score)) +
   geom_point()+
-  stat_smooth() +
+  stat_smooth() 
   ggsave("../figures/scatter_sppb-time.png")
 
 modelin %>%
@@ -197,6 +197,7 @@ table(modelin$rel.date == 0)
 
 ```{r}
 # saveRDS(plotin, "../data/sppb_longitudinal-lineplot-input.RDS")
+plotin <- readRDS("../data/sppb_longitudinal-lineplot-input.RDS")
 
 plotin %>%
   ggplot(aes(x = rel.date, y = count, group = fct_relevel(term, sig.plot.ord), 
@@ -208,8 +209,9 @@ plotin %>%
   # stat_smooth(aes(group = measure)) + 
   scale_color_viridis_d(aesthetics = c("color", "fill"), na.value = "grey50", name = "Effect \ndirection") +
   labs(x = "", y = "") + 
-  theme_bw() +
-  ggsave("../figures/sppb_longitudinal.png")
+  theme_bw()
+  ggsave("../figures/sppb_longitudinal.svg",
+         height = 2, width = 3.5)
 ```
 
 # Plot as lollipop
@@ -227,18 +229,21 @@ lollipop.in <- sppb.sig %>%
   filter(term %in% choose.taxa) %>%
   mutate(display.name = gsub("_", " ", gsub(".*__(.*)", "\\1", term)),
          effect.dir = ifelse(term %in% sppb.possig$term, "Positive", "Negative")) %>%
-  arrange(Estimate)
-lolli.ord <- lollipop.in$display.name
+  arrange(Estimate) %>%
+  mutate(display.name.break = gsub("^(\\w+)\\s(.*)$", "\\1\n\\2", display.name))
+lolli.ord <- lollipop.in$display.name.break
+
 ```
 
 ```{r}
 lollipop.in %>%
-  ggplot(aes(x = Estimate, y = fct_relevel(display.name, lolli.ord),
-             yend = fct_relevel(display.name, lolli.ord), color = effect.dir)) +
+  ggplot(aes(x = Estimate, y = fct_relevel(display.name.break, lolli.ord),
+             yend = fct_relevel(display.name.break, lolli.ord), color = effect.dir)) +
   geom_segment(xend = 0, color = "black") +
   geom_point(size = 5) +
   scale_color_viridis_d(name = "") +
   labs(x = "Effect size", y = "") +
-  theme_bw() +
-  ggsave("../figures/lollipop_sppb-longitudinal.png")
+  theme_bw() 
+  ggsave("../figures/lollipop_sppb-longitudinal.svg",
+         height = 3, width = 4)
 ```
