@@ -9,6 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(ggforce)
 source("00-paths.R")
 ```
 
@@ -152,7 +153,7 @@ long_plot <- function(plot.data, microbe.order, score.name){
   facet_col(vars(fct_relevel(measure, score.name)), scales = "free_y", space = "free") +
   # facet_col(vars(effect.dir), space = "free", scales = "free_y") +
   geom_point() +
-  stat_smooth(alpha = .2) +
+  stat_smooth(alpha = .2, se = F) +
   # stat_smooth(aes(group = measure)) + 
   scale_color_viridis_d(aesthetics = c("color", "fill"), na.value = "grey50", name = "Effect \ndirection") +
   labs(x = "", y = "") + 
@@ -162,7 +163,21 @@ long_plot <- function(plot.data, microbe.order, score.name){
 
 
 ```{r}
-long_plot(sppb.longplot$plot.data, sppb.longplot$microbe.order, "SPPB")
+sppb.longmics <- sppb.longplot$plot.data %>%
+  filter(measure == "Microbe") %>%
+  group_by(term, effect.dir) %>%
+  summarise(max.mic = max(count, na.rm = T)) %>%
+  ungroup() %>%
+  arrange(effect.dir, desc(max.mic)) %>%
+  mutate(neg.mic = row_number()) %>%
+  arrange(desc(effect.dir), desc(max.mic)) %>%
+  mutate(pos.mic = row_number()) %>%
+  filter(neg.mic <= 5 | pos.mic <= 5)
+  
+sppb.plotin <- sppb.longplot$plot.data %>%
+  filter(measure == "SPPB" | term %in% sppb.longmics$term)
+sppb.mord <- subset(sppb.longplot$microbe.order, sppb.longplot$microbe.order %in% sppb.longmics$term)
+long_plot(sppb.plotin, sppb.mord, "SPPB")
 
 ggsave("../figures/longitudinal_fixeffect_SPPB.svg",
        height = 3, width = 4)
@@ -219,4 +234,48 @@ ggsave("../figures/lollipop_long-fixef_promis.svg", height = 3, width = 4)
 ```{r}
 plot_lollipop(iadl.lolli$plot.data, iadl.lolli$microbe.order)
 ggsave("../figures/lollipop_long-fixef_iadl.svg", height = 3, width = 4)
+```
+
+# Combined lollipop plot
+
+```{r}
+big.lolli.ls <- list(sppb.lolli$plot.data, promis.lolli$plot.data, iadl.lolli$plot.data)
+names(big.lolli.ls) <- c("SPPB", "PROMIS", "IADL")
+
+big.lolli.df <- lapply(names(big.lolli.ls), function(x) big.lolli.ls[[x]] %>% mutate(model = x)) %>%
+  bind_rows() %>%
+  mutate(Estimate.scaled = case_when(model == "SPPB" ~ Estimate/12,
+                                     model == "PROMIS" ~ Estimate/50,
+                                     model == "IADL" ~ Estimate/8))
+big.lolli.ord <- big.lolli.df %>%
+  group_by(display.name) %>%
+  summarise(max.effect = max(Estimate.scaled)) %>%
+  arrange(max.effect) %>%
+  select(display.name) %>%
+  mutate(mic.y = row_number())
+
+big.lolli.df <- big.lolli.df %>%
+  left_join(big.lolli.ord) %>%
+  mutate(mod.y = ifelse(model == "SPPB", mic.y, ifelse(model == "PROMIS", mic.y - .3, mic.y + .3)))
+
+rib.inputs <- data.frame(rib.y = seq(1, max(big.lolli.ord$mic.y), 2)) %>%
+  mutate(rib.min = rib.y - .5,
+         rib.max = rib.y + .5)
+```
+
+```{r}
+ggplot(big.lolli.df, aes(x = Estimate.scaled, xend = 0,
+                         y = mod.y, yend = mod.y,
+                         color = model, group = model)) +
+  geom_rect(data = rib.inputs, inherit.aes = F, aes(ymin = rib.min, ymax = rib.max,
+                                                    xmin = -430, xmax = 190),
+            alpha = .2) +
+  geom_segment(color = "black") +
+  geom_point(size = 4) +
+  labs(x = "Scaled effect", y = "") +
+  scale_y_continuous(breaks = big.lolli.ord$mic.y, labels = big.lolli.ord$display.name) +
+  scale_color_brewer(palette = "Set1", name = "") +
+  theme_bw()
+
+ggsave("../figures/lollipop_long-fixef_many.svg", height = 3, width = 4)
 ```
