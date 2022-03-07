@@ -1,0 +1,121 @@
+---
+title: "carg_visualization"
+author: "Ryan Mrofchak"
+date: "8/18/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r volcano plot}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+
+source("00-paths.R")
+
+matched_carg_data <- read_csv("matched-carg-scores.csv")
+model <- read_csv("model_carg-microbes.csv")
+metaphlan <- read.table("OneCodex_merged_output.txt", header = TRUE)
+
+# # remove NA's
+clin <- 
+  matched_carg_data %>%
+  drop_na(carg_score) %>%
+  mutate(patient.id = as.factor(patient.id))
+
+summary(clin)
+
+clin %>%
+  ggplot(aes(x = carg_score)) + 
+  geom_histogram()
+
+clin %>%
+  ggplot(aes(x = carg_score)) +
+  geom_density()
+
+# # # Matching to microbiome data
+mic <- 
+  metaphlan %>%
+  select(-NCBI_tax_id) %>%
+  gather(-clade_name, key = "sequence.id", value = "abundance") %>%
+  spread(key = "clade_name", value = "abundance")
+
+model.df <- inner_join(mic,clin)
+
+view(model.df)
+```
+```{r volcano_plot}
+# # # creating volcano plot
+volcano_plot <- ggplot(data = model, aes(x = statistic, y = -log10(p.value))) + 
+  geom_point(col = "black") + 
+  theme_minimal() + 
+  geom_hline(yintercept = -log10(0.05), col = "red") +
+  geom_point(data = a_mucin, color = "green") + 
+  geom_text(aes(label = 
+                  ifelse(term == "k__Bacteria.p__Verrucomicrobia.c__Verrucomicrobiae.o__Verrucomicrobiales.f__Verrucomicrobiaceae.g__Akkermansia.s__Akkermansia_muciniphila",
+                         as.character("A. muciniphila"),"")), hjust = 1, vjust = 0.6, show.legend = FALSE, size = 3) +
+  labs(Main = "Taxa with p-value < 0.05", label = c("Phyla", "Family", "Genus", "Species", "p-value > 0.05")) + 
+  geom_point(data = model_phyla, color = "#1B9E77", stat = "identity", position = "identity") +
+  geom_text(data = model_phyla, label = "Firmicutes", stat = "identity", position = "identity", color = "#1B9E77", aes(hjust = -0.1, vjust = 0.1), size = 4) + 
+  geom_point(data = model_class, color = "#7570B3") +
+  geom_text(data = model_class, color = "#7570B3", stat = "identity", position = "identity", label = "Clostridia", aes(hjust = -0.1, vjust = -0.8), size = 4) + 
+  geom_point(data = model_family, color = "#E7298A") + 
+  geom_text(aes(label = 
+                  ifelse(term == "k__Bacteria.p__Firmicutes.c__Clostridia.o__Clostridiales.f__Ruminococcaceae",
+                         as.character("Ruminococcaceae"),"")), show.legend = FALSE, color = "#E7298A", fontface = "italic", hjust = -0.09, vjust = -0.5, size = 4) +
+  geom_point(data = model_genus, color = "#66A61E") + 
+  geom_text(aes(label = ifelse(term == "k__Bacteria.p__Firmicutes.c__Bacilli.o__Lactobacillales.f__Streptococcaceae.g__Streptococcus",
+                               as.character("Streptococcus"),"")), show.legend = FALSE, color = "#66A61E", fontface = "italic", hjust = 1.1, vjust = 0.6, size = 4) +
+  geom_text(aes(label = ifelse(term == "k__Bacteria.p__Firmicutes.c__Clostridia.o__Clostridiales.f__Ruminococcaceae.g__Ruminococcus",
+                               as.character("Ruminococcus"), "")), show.legend = FALSE, color = "#66A61E", fontface = "italic", hjust = -0.25, vjust = 2, size = 4) +
+  geom_point(data = model_species, color = "#E6AB02") +
+  geom_text(aes(label = ifelse(term == "k__Bacteria.p__Firmicutes.c__Bacilli.o__Lactobacillales.f__Streptococcaceae.g__Streptococcus.s__Streptococcus_salivarius",
+                               as.character("S. salivarius"), "")), show.legend = FALSE, color = "#E6AB02", fontface = "italic", hjust = 1.1, vjust = -0.2, size = 4) +
+  geom_text(aes(label = ifelse(term == "k__Bacteria.p__Bacteroidetes.c__Bacteroidia.o__Bacteroidales.f__Rikenellaceae.g__Alistipes.s__Alistipes_finegoldii",
+                               as.character("A. finegoldii"), "")), show.legend = FALSE, color = "#E6AB02", fontface = "italic", hjust = -0.1, vjust = -0.1, size = 4) + 
+  geom_text(aes(label = ifelse(term == "k__Bacteria.p__Firmicutes.c__Clostridia.o__Clostridiales.f__Ruminococcaceae.g__Subdoligranulum.s__Subdoligranulum_unclassified",
+                               as.character("unclassified Subdoligranulum"),"")), show.legend = FALSE, fontface = "italic", color = "#E6AB02", size = 4, hjust = -0.05, vjust = 0.05) + 
+  geom_text(aes(label = ifelse(term == "k__Bacteria.p__Firmicutes.c__Clostridia.o__Clostridiales.f__Lachnospiraceae.g__Dorea.s__Dorea_longicatena", as.character("D. longicatena"),"")), show.legend = FALSE, color = "#E6AB02", fontface = "italic", size = 4, hjust = -0.15, vjust = 0.9)
+
+volcano_plot
+
+ggsave("volcano_plot.png", plot = last_plot(), dev = "png", height = 6, width = 6, path = file.path)
+```
+
+```{r updated barplot for effects on CARG}
+
+library(ggtext)
+library(vegan)
+library(tidyr)
+
+model_minus_strains <- model_rows_pvalue_less_than_005 %>%
+  filter(!grepl("\\.t__", term)) %>%
+  arrange(desc(estimate)) %>%
+  mutate(effect.rank = row_number(),
+         taxafree.term = gsub(".*(\\w__.*)", "\\1", term)) %>%
+  separate(taxafree.term, sep = "__", into = c("taxlev", "taxname")) %>%
+  mutate(taxname = ifelse(taxlev %in% c("f", "g", "s"), paste0("<i>", taxname, "</i>"), taxname),
+         taxname = gsub("_", " ", taxname),
+    taxname = gsub("<i>Unclassified ", "Unclassified </i>", taxname),
+    taxname = gsub("(.*) unclassified", "Unclassified \\1", taxname),
+    taxname = gsub("<i>Peptostreptococcaceae_noname</i>", "Unclassified <i>Peptostreptococcaceae</i>", taxname),
+    taxname = gsub("<i>Subdoligranulum_unclassified</i>", "Unclassified <i>Subdoligranulum</i>", taxname),
+    taxname = gsub("<i>Streptococcus_salivarius</i>", "<i>Streptococcus</i> <i>salivarius</i>", taxname),
+    taxname = gsub("<i>Alistipes_finegoldii</i>", "<i>Alistipes</i> <i>finegoldii</i>", taxname),
+    taxname = gsub("<i>Dorea_longicatena</i>", "<i>Dorea</i> <i>longicatenas</i>", taxname))
+
+model_minus_strains %>% 
+  ggplot(aes(x = reorder(taxname, estimate), y = estimate, fill = taxlev)) +
+  geom_col() +  
+  coord_flip() + 
+  scale_fill_brewer(palette = "Dark2", name = "Taxonomy level", breaks = c("p", "o", "c", "f", "g", "s"), labels = c("Phyla", "Order", "Class", "Family", "Genus", "Species")) + 
+  theme_minimal() + 
+  labs(x = "Taxa", y = "Effect on CARG")
+
+bar_graph
+
+ggsave("updated_effects_on_CARG.png", dev = "png", width = 8, height = 8, path = file.path)
+```

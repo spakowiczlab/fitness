@@ -23,12 +23,9 @@ CoRR <- read.csv(file.path(paths$controlled,
                                    "CoRR5512FITNESSCalcu-FullLungDataset2921_DATA_2021-02-09_1311.csv"),
                   stringsAsFactors = F)
 
-# patkey.raw <- read_excel(file.path(paths$data, "key_sequence-to-date.xlsx"))
 
 runcheck <- read_excel(file.path(paths$data, "Fitness-samples-tbr-2021.xlsx"))
 
-# batch1 <- read.csv(file.path(paths$data, "aggtab_metaphlan_QC-filtered.csv"), stringsAsFactors = F)
-# batch2 <- read.csv(file.path(paths$data, "20025_metaphlan_filtered.csv"), stringsAsFactors = F)
 
 idkeys <- lapply(1:2, function(x) read_excel(path = file.path(paths$controlled, "OSU-18055 shared patient log.xlsx"),
                                              sheet = x))
@@ -57,7 +54,7 @@ patkey <- runcheck %>%
 ```
 
 ```{r}
-
+test <- colnames(CoRR)
 test[grep("date", test)]
 
 
@@ -93,6 +90,6 @@ names(stoolmatch.res) <- c("Successfull.matches", "Redcap.unmatched", "Microbes.
 # Write results
 
 ```{r}
-write_xlsx(stoolmatch.res, file.path(paths$data, "test-longitudinal-matching.xlsx"))
+write_xlsx(stoolmatch.res, file.path(paths$controlled, "test-longitudinal-matching.xlsx"))
 ```
 

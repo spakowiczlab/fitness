@@ -39,10 +39,12 @@ vignettes/*.pdf
 .Renviron
 
 # Large csv files
-*.csv
+Fitness_dataset.csv
 
 # Weird id keys
-*.xlsx
+key_sequence-to-date.xlsx
+fitness.cycles.xlsx
+Fitness-samples-tbr-2021.xlsx
 
 # paths system
 fitness.json
