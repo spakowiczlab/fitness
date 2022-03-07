@@ -2,6 +2,7 @@ urls <- read.table("//fs/ess/PAS1695/projects/fitness/data/one_codex_fastq_downl
 
 urls.wget <- paste("wget", urls$V1)
 
+urls.wget <- gsub("response-content-disposition=attachment; ", "", urls.wget)
 make.wgets <- function(urls){
   
   urls.list <- split(urls, 
