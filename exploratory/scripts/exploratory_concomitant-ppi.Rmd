@@ -22,12 +22,13 @@ source("00-paths.R")
 # Load data
 
 ```{r}
-corr <- read.csv("../data/CoRR_concomitent-meds.csv", stringsAsFactors = F)
-
-ppi <- read.table("T:/Labs/Spakowicz/ppiio/data/curated/proton-pump-inhibitors.txt", 
-                  stringsAsFactors = F, sep = "\t") %>%
-    rename("medname" = "V1") %>%
-    mutate(medclass = "PPI")
+# corr <- read.csv("../data/CoRR_concomitent-meds.csv", stringsAsFactors = F)
+# colnames(corr)[1] <- "id"
+# 
+# ppi <- read.table("T:/Labs/Spakowicz/ppiio/data/curated/proton-pump-inhibitors.txt", 
+#                   stringsAsFactors = F, sep = "\t") %>%
+#     rename("medname" = "V1") %>%
+#     mutate(medclass = "PPI")
 
 ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
 
@@ -40,19 +41,19 @@ studcy <- read_excel("../data/cycle_study-visit-tracker_v3.xlsx")
 # Functions
 
 ```{r}
-determine_ppis <- function(mednames, allmeds){
-  meds.members <- lapply(mednames, function(x) as.data.frame(cbind(
-    allmeds = unique(allmeds[grepl(x,
-                                        allmeds,
-                                        ignore.case = T)]),
-    medname = x))) %>%
-    bind_rows() %>%
-    mutate(allmeds = as.character(allmeds),
-           medname = as.character(medname),
-           medclass = "ppi")
-  
-  return(meds.members)
-}
+# determine_ppis <- function(mednames, allmeds){
+#   meds.members <- lapply(mednames, function(x) as.data.frame(cbind(
+#     allmeds = unique(allmeds[grepl(x,
+#                                         allmeds,
+#                                         ignore.case = T)]),
+#     medname = x))) %>%
+#     bind_rows() %>%
+#     mutate(allmeds = as.character(allmeds),
+#            medname = as.character(medname),
+#            medclass = "ppi")
+#   
+#   return(meds.members)
+# }
   
 ```
 
@@ -62,7 +63,7 @@ determine_ppis <- function(mednames, allmeds){
 
 ```{r}
 # corr.l <- corr %>%
-#   select("patient.id", "redcap_event_name", contains("agent")) %>%
+#   select("id", "redcap_event_name", contains("agent")) %>%
 #   gather(contains("agent"), key = "mednumber", value = "allmeds") %>%
 #   filter(!is.na(allmeds) & allmeds != "")
 # 
@@ -75,7 +76,7 @@ determine_ppis <- function(mednames, allmeds){
 #   mutate(ppi = ifelse(is.na(medclass), 0, 1))
 # 
 # corr.ppi.summarize <- corr.ppilab %>%
-#   group_by(patient.id, redcap_event_name) %>%
+#   group_by(id, redcap_event_name) %>%
 #   summarise(ppi = sum(ppi)) %>%
 #   mutate(ppi = ifelse(ppi >= 1, 1, 0))
 ```
@@ -83,12 +84,18 @@ determine_ppis <- function(mednames, allmeds){
 ## Save
 
 ```{r}
-# write.csv(corr.ppi.summarize, file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"), row.names = F)
+# write.csv(corr.ppi.summarize, file.path(paths$t.drive, "data", "patient_concommitant_ppis_2.csv"), row.names = F)
 
-corr.ppi.summarize <- read.csv(file.path(paths$t.drive, "data", "patient_concommitant_ppis.csv"))
+# corr.ppi.summarize <- read.csv(file.path(paths$t.drive, "data", "patient_concommitant_ppis_2.csv"))
+
+corr.ppi.summarize <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/S2345FITNESSSConcomi_DATA_2022-03-07_1522.csv", stringsAsFactors = F) %>%
+  mutate(patient.id = record_id,
+         ppi = ppis) %>%
+  select(patient.id, ppi)
 ```
 
 # Visualize timelines
+
 
 ## Get treatment groups
 
@@ -129,7 +136,7 @@ clin.timein <- clin.filt %>%
          tpoint = ifelse(visit.type == "cycle",
                          gsub(".*_visit_(\\d).*", "\\1", redcap_event_name),
                          cycle),
-         ppi = ifelse(visit.type == "cycle", "Unknown", ppi),
+         # ppi = ifelse(visit.type == "cycle", "Unknown", ppi),
          tpoint.2 = str_pad(tpoint, width = 2, side = "left", pad = "0"))
   # filter(grepl("study", redcap_event_name))
 ```
@@ -141,8 +148,8 @@ ggplot(clin.timein, aes(x = tpoint.2, y = as.factor(patient.id), shape = as.fact
   scale_color_viridis_d(name = "Treatment", option = "turbo") +
   scale_shape(name = "PPI") +
   scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
-  theme_bw() +
-  ggsave("../figures/timeline_sample-points_treatment-ppi.png", height = 5, width = 5)
+  theme_bw() 
+ggsave("../figures/timeline_sample-points_treatment-ppi.png", height = 5, width = 5)
 ```
 
 # Make a version where x=days
@@ -170,8 +177,8 @@ clin.timein.days <- clin.filt.days %>%
          visit.type = gsub("(^\\w+)_visit.*", "\\1", redcap_event_name),
          tpoint = as.numeric(ifelse(visit.type == "cycle",
                          gsub("cycle_visit_(.*)_arm.*", "\\1", redcap_event_name),
-                         cycle)),
-         ppi = ifelse(visit.type == "cycle", "Unknown", ppi),
+                         cycle))
+         # ppi = ifelse(visit.type == "cycle", "Unknown", ppi),
          ) %>%
   group_by(patient.id) %>%
   mutate(minimun_cycle = min(tpoint),
@@ -186,7 +193,7 @@ ggplot(clin.timein.days, aes(x = elapsed.days, y = as.factor(ylabs), shape = as.
   labs(y = "Patient", x = "Days from earliest sample") +
   scale_color_viridis_d(name = "Treatment", option = "turbo") +
   scale_shape(name = "PPI") +
-  scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = FALSE) +
-  theme_bw() +
-  ggsave("../figures/timeline_sample-points_treatment-ppi_days.png", height = 5, width = 5)
+  scale_alpha_manual(breaks = c("cycle", "study"), values = c(.4, 1), guide = "none") +
+  theme_bw() 
+ggsave("../figures/timeline_sample-points_treatment-ppi_days.png", height = 5, width = 5)
 ```
