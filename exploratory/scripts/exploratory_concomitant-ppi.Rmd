@@ -187,8 +187,10 @@ clin.timein.days <- clin.filt.days %>%
 ```
 
 ```{r}
-ggplot(clin.timein.days, aes(x = elapsed.days, y = as.factor(ylabs), shape = as.factor(ppi), color = ici.name,
-                             alpha = visit.type)) +
+ggplot(filter(clin.timein.days, ylabs != "4044(2)"), aes(x = elapsed.days, y = as.factor(ylabs), shape = as.factor(ppi),
+                             color = ici.name
+                             # alpha = visit.type
+                             )) +
   geom_point(size = 3) +
   labs(y = "Patient", x = "Days from earliest sample") +
   scale_color_viridis_d(name = "Treatment", option = "turbo") +
