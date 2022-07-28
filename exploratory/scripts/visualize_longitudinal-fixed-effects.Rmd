@@ -45,8 +45,14 @@ modelin <- clin.withdate %>%
   mutate(min.date = min(stool_sample_date)) %>%
   ungroup() %>%
   mutate(rel.date = as.numeric(stool_sample_date - min.date)) %>%
-  left_join(mics.form)
-  
+  left_join(mics.form) %>%
+  select(-stool_sample_date, -min.date)
+```
+
+
+```{r get modelin without controlled variables}
+saveRDS(modelin, "../data/visualize_longitudinal-fixed-effects_modelin.RDS")
+modelin <- readRDS("../data/visualize_longitudinal-fixed-effects_modelin.RDS")
 ```
 
 # Format significant models for plots
