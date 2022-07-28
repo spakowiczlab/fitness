@@ -266,7 +266,17 @@ rib.inputs <- data.frame(rib.y = seq(1, max(big.lolli.ord$mic.y), 2)) %>%
          rib.max = rib.y + .5)
 ```
 
-```{r}
+```{r directly save or read lollipop data}
+# saveRDS(big.lolli.df, "../data/lollipop_all-models-df.RDS")
+# saveRDS(rib.inputs, "../data/lollipop_background-stripe-inputs.RDS")
+# saveRDS(big.lolli.ord, "../data/lollipop_microbe-order.RDS")
+
+big.lolli.df <- readRDS("../data/lollipop_all-models-df.RDS")
+rib.inputs <- readRDS("../data/lollipop_background-stripe-inputs.RDS")
+big.lolli.ord <- readRDS("../data/lollipop_microbe-order.RDS")
+```
+
+```{r plot all sig from all models on one lollipop}
 ggplot(big.lolli.df, aes(x = Estimate.scaled.logged, xend = 0,
                          y = mod.y, yend = mod.y,
                          color = model, group = model)) +
