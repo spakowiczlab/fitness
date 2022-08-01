@@ -22,7 +22,7 @@ library(ggtext)
 
 # Load data
 ```{r}
-data.dir <- "T:/Labs/Spakowicz/projects/fitness/data"
+data.dir <- "T:/Labs/Spakowicz/fitness/data"
 
 clin <- read.csv(file.path(data.dir, "clinical-with-seqids_baseline.csv"), stringsAsFactors = F)
 ra.table <- read.csv(file.path(data.dir, "matched-microbes_baseline.csv"), stringsAsFactors = F)
@@ -189,6 +189,6 @@ carg.barin %>%
         # axis.ticks.x = element_blank(),
         # axis.text.x = element_blank()
         ) +
-  coord_flip() +
+  coord_flip() 
   ggsave("../figures/barplot_carg-effects.pdf", height = 4, width = 6)
 ```

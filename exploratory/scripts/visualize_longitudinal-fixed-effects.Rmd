@@ -159,12 +159,13 @@ long_plot <- function(plot.data, microbe.order, score.name){
   facet_col(vars(fct_relevel(measure, score.name)), scales = "free_y", space = "free") +
   # facet_col(vars(effect.dir), space = "free", scales = "free_y") +
   geom_point() +
-  stat_smooth(alpha = .2, se = F) +
+  stat_smooth(alpha = .2, se = T) +
   # stat_smooth(aes(group = measure)) + 
   scale_color_viridis_d(aesthetics = c("color", "fill"), na.value = "grey50", name = "Effect \ndirection") +
   labs(x = "", y = "") + 
   theme_bw()
 }
+
 ```
 
 
@@ -183,17 +184,26 @@ sppb.longmics <- sppb.longplot$plot.data %>%
 sppb.plotin <- sppb.longplot$plot.data %>%
   filter(measure == "SPPB" | term %in% sppb.longmics$term)
 sppb.mord <- subset(sppb.longplot$microbe.order, sppb.longplot$microbe.order %in% sppb.longmics$term)
-long_plot(sppb.plotin, sppb.mord, "SPPB")
 
+p <- long_plot(sppb.plotin, sppb.mord, "SPPB")
+p
 ggsave("../figures/longitudinal_fixeffect_SPPB.svg",
        height = 3, width = 4)
 
 ```
 
 ```{r}
+p + theme_bw(base_size = 18)
+
+ggsave("../figures/wclc22_longitudinal_fixeffect_SPPB.png",
+       height = 5, width = 7)
+```
+
+
+```{r}
 long_plot(iadl.longplot$plot.data, iadl.longplot$microbe.order, "IADL")
 
-ggsave("../figures/longitudinal_fixeffect_IADL.svg",
+ggsave("../figures/longitudinal_fixeffect_IADL.png",
        height = 3, width = 4)
 ```
 
@@ -283,7 +293,8 @@ big.lolli.ord <- readRDS("../data/lollipop_microbe-order.RDS")
 ```
 
 ```{r plot all sig from all models on one lollipop}
-ggplot(big.lolli.df, aes(x = Estimate.scaled.logged, xend = 0,
+p2 <- 
+  ggplot(big.lolli.df, aes(x = Estimate.scaled.logged, xend = 0,
                          y = mod.y, yend = mod.y,
                          color = model, group = model)) +
   geom_rect(data = rib.inputs, inherit.aes = F, aes(ymin = rib.min, ymax = rib.max,
@@ -297,5 +308,14 @@ ggplot(big.lolli.df, aes(x = Estimate.scaled.logged, xend = 0,
   theme_bw()
 
 # ggsave("../figures/lollipop_long-fixef_many.svg", height = 3, width = 4)
+p2
 ggsave("../figures/lollipop_long-fixef_many.png")
 ```
+
+```{r}
+p2 + theme_bw(base_size = 18)
+
+ggsave("../figures/wclc22_lollipop_long-fixef_many.png",
+       height = 9, width = 10)
+```
+
