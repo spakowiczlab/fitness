@@ -1,0 +1,83 @@
+---
+title: "T cell senescence"
+author: "Caroline Wheeler"
+date: '2022-09-06'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(readxl)
+library(tidyverse)
+```
+
+read in table 
+```{r}
+nano <- readxl::read_xlsx("/Volumes/spakowicz/fitness/data/raw/nanostring/RoskoPresley_NanostringJune2022.xlsx", sheet = "nSolver output") %>%
+  filter(`Probe Name` == "CDKN2A (p16)") %>%
+  select(-`Probe Name`, -Annotation, -`Accession #`, -`NS Probe ID`, -`Class Name`, -`Analyte Type`, -`% Samples above Threshold`)
+
+clin_match <- read_csv("presentations/AACRA&C2022/data/clinical_earliest-microbe-samps.csv")
+
+mics_temp <- read.table("/Volumes/spakowicz/fitness/data/derived/merged_metaphlan_output.txt", header = TRUE) %>%
+  select(-NCBI_tax_id)  %>%
+  mutate(clade_name = sub("^.+__", "", clade_name))
+  
+mics_temp <- aggregate(mics_temp[,-1], list(clade_name=mics_temp[,1]), FUN = sum)
+
+
+mics <- t(mics_temp[-1])
+colnames(mics) <- mics_temp[, 1]
+
+```
+
+### this is very messy ### 
+
+wide to long 
+```{r}
+test <- as.data.frame(t(nano)) %>%
+  rename("p16" = V1) %>%
+  mutate(outcome = str_match(rownames(test), '([^_]+)(?:_[^_]+){1}$')[,2]) %>%
+  mutate(patient.id = substr(outcome, 0, 4)) %>%
+  select(-outcome) %>%
+  filter(grepl("V1", rownames(test), ignore.case = TRUE))
+
+data <- merge(test, clin_match)
+
+mics <- as.data.frame(mics) 
+
+mics$sequence.id <- rownames(mics)
+mics <- merge(mics, data)
+```
+
+```{r, warning=FALSE}
+mics <- mics %>%
+  select(-sequence.id, -patient.id)
+
+mics <- mics %>%
+  mutate(p16 = as.numeric(p16))
+
+mics <- mics[, colSums(mics != 0) > 0]
+res <- data_frame()
+res$microbe <- ""
+res$p.value <- NA
+
+for(i in 1:ncol(mics)) {  
+  print(colnames(mics)[i])
+  corr <- cor.test(mics$p16, mics[, i], method = 'spearman')
+  res <- res %>% add_row(microbe = colnames(mics)[i], p.value = corr$p.value)
+}
+```
+
+```{r}
+res <- res %>%
+  mutate(adjusted.p.value = p.adjust(p.value)) %>%
+  filter(microbe != "p16") %>%
+  arrange(p.value)
+
+write.csv(res, "../data/p16~microbe_p-values.csv")
+```
+
+
+
