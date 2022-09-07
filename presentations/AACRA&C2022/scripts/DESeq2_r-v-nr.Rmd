@@ -1,0 +1,139 @@
+---
+title: "AACR A&C 2022 response deseq"
+output: html_document
+date: '2022-09-06'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(DESeq2)
+library(readxl)
+```
+
+# Load data
+
+```{r}
+response <- read_excel("T:/Labs/Spakowicz/fitness/data/raw/FITNESS lung RECIST final collection.xlsx",
+                       sheet = "Data collection",
+                       col_names = F)
+
+match.samps <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/clinical-OC-matched_resolved.csv", stringsAsFactors = F)
+mics <- read.table("T:/Labs/Spakowicz/fitness/data/derived/merged_metaphlan_output.txt", header = T, sep = "\t", stringsAsFactors = F)
+```
+
+# Format
+
+## Response
+
+```{r}
+extractRESCIST <- function(data){
+  # Which rows contain our main info [patient and final recist?]
+  recordlines <- grep("Record ID", data$...1)
+  targetlines <- grep("Target Lesion Response", data$...1)
+  
+  # Which columns have recist in them?
+  data.respcols <- data[, c(4,7,10,13)]
+  colnames(data.respcols) <- c("Baseline", "month3", 
+                               "month6", "month12")
+  
+  # Grab only rows/column combos with recist, then label with patient
+  data.resprows <- data.respcols[targetlines,]
+  data.resprows$patient.id <- data$...1[recordlines]
+  
+  # Minor formatting
+  respdat.form <- data.resprows %>%
+    mutate(patient.id = gsub("Record ID. ", "", patient.id)) %>%
+    pivot_longer(-patient.id, names_to = "Timepoint",
+                 values_to = "RECIST")
+  
+  return(respdat.form)
+
+  }
+```
+
+```{r}
+response.form <- extractRESCIST(response)
+
+response.form %>%
+  drop_na() %>%
+  mutate(progression = case_when(RECIST %in% 
+                                   c("PD",
+                                     "PD, pericardial effusion")
+                                 ~ "NR",
+                                 RECIST == "SD" ~ "SD" ,
+                                 RECIST %in% c("CR", "Complete response", "PR") ~ "R")) %>%
+  drop_na() %>%
+  group_by(Timepoint, progression) %>%
+  tally()
+
+response.modin <- response.form %>%
+  mutate(progression = case_when(RECIST %in% 
+                                   c("PD",
+                                     "PD, pericardial effusion", "SD")
+                                 ~ "NR",
+                                 RECIST %in% c("CR", "Complete response", "PR") ~ "R")) %>%
+  drop_na() %>%
+  filter(Timepoint == "month3")
+```
+
+## Choosing microbe samples
+
+```{r}
+choose.samps <- match.samps %>%
+  select(patient.id, sequence.id, stool_sample_date) %>%
+  mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+  group_by(patient.id) %>%
+  filter(stool_sample_date == min(stool_sample_date)) %>%
+  select(patient.id, sequence.id)
+write.csv(choose.samps, "../data/clinical_earliest-microbe-samps.csv", row.names = F)
+```
+
+## Set up taxa split matrices
+
+```{r}
+mics.taxlab <- mics %>%
+  mutate(taxlev = ifelse(grepl("\\|s__", clade_name), "s",
+                         ifelse(grepl("\\|g__", clade_name), "g",
+                                ifelse(grepl("\\|f__", clade_name), "f",
+                                       ifelse(grepl("\\|o__", clade_name), "o",
+                                              ifelse(grepl("\\|c__", clade_name), "c",
+                                                     ifelse(grepl("\\|p__", clade_name), "p", "k")))))))
+
+mics.mats <- lapply(c("k","p","c", "o", "f", "g", "s"), function(x) mics.taxlab %>%
+                      filter(taxlev == x) %>%
+                      column_to_rownames(var = "clade_name") %>%
+                      select(any_of(choose.samps$sequence.id)))
+names(mics.mats) <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+```
+
+## Final assembly and check
+
+```{r}
+metdat <- choose.samps %>%
+  filter(sequence.id %in% colnames(mics.mats[[1]])) %>%
+  mutate(patient.id = as.character(patient.id)) %>%
+  left_join(response.modin)
+
+identical(metdat$sequence.id, colnames(mics.mats[[1]]))
+```
+
+# Run analysis
+
+```{r}
+runDESeq <- function(taxlev){
+  dds <- DESeqDataSetFromMatrix(countData = mics.mats[[taxlev]], colData = metdat, design = ~progression)
+  dds <-DESeq(dds)
+  res <- results(dds) %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "microbe") %>%
+    mutate(TaxaLevel = taxlev)
+  return(res)
+}
+```
+
+# Format output
+
+# Save
+
