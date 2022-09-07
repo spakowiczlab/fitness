@@ -62,19 +62,21 @@ mics <- mics[, colSums(mics != 0) > 0]
 res <- data_frame()
 res$microbe <- ""
 res$p.value <- NA
+res$rho <- NA
 
 for(i in 1:ncol(mics)) {  
   print(colnames(mics)[i])
   corr <- cor.test(mics$p16, mics[, i], method = 'spearman')
-  res <- res %>% add_row(microbe = colnames(mics)[i], p.value = corr$p.value)
+  res <- res %>% add_row(microbe = colnames(mics)[i], p.value = corr$p.value, rho = corr$estimate)
 }
 ```
 
 ```{r}
 res <- res %>%
-  mutate(adjusted.p.value = p.adjust(p.value)) %>%
+  #mutate(adjusted.p.value = p.adjust(p.value)) %>%
   filter(microbe != "p16") %>%
-  arrange(p.value)
+  arrange(p.value) %>%
+  mutate(direction = ifelse(rho > 0, "positive", "negative"))
 
 write.csv(res, "../data/p16~microbe_p-values.csv")
 ```
