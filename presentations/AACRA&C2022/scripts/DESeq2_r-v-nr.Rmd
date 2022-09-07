@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(DESeq2)
 library(readxl)
+library(rlist)
 ```
 
 # Load data
@@ -90,6 +91,12 @@ choose.samps <- match.samps %>%
 write.csv(choose.samps, "../data/clinical_earliest-microbe-samps.csv", row.names = F)
 ```
 
+```{r}
+metdat <- choose.samps %>%
+  filter(sequence.id %in% colnames(mics)) %>%
+  mutate(patient.id = as.character(patient.id)) %>%
+  inner_join(response.modin)
+```
 ## Set up taxa split matrices
 
 ```{r}
@@ -104,17 +111,15 @@ mics.taxlab <- mics %>%
 mics.mats <- lapply(c("k","p","c", "o", "f", "g", "s"), function(x) mics.taxlab %>%
                       filter(taxlev == x) %>%
                       column_to_rownames(var = "clade_name") %>%
-                      select(any_of(choose.samps$sequence.id)))
+                      select(any_of(metdat$sequence.id)))
 names(mics.mats) <- c("kingdom", "phylum", "class", "order", "family", "genus", "species")
+
+mics.mats <- lapply(mics.mats, function(x) floor(x*1e5))
 ```
 
-## Final assembly and check
+## Final check
 
 ```{r}
-metdat <- choose.samps %>%
-  filter(sequence.id %in% colnames(mics.mats[[1]])) %>%
-  mutate(patient.id = as.character(patient.id)) %>%
-  left_join(response.modin)
 
 identical(metdat$sequence.id, colnames(mics.mats[[1]]))
 ```
@@ -133,7 +138,17 @@ runDESeq <- function(taxlev){
 }
 ```
 
-# Format output
+```{r}
+des.res <- lapply(names(mics.mats), function(x) try(runDESeq(x)))
+names(des.res) <- names(mics.mats)
+
+des.res.df <- bind_rows(list.clean(des.res, fun = is.character)) %>%
+  mutate(padj = p.adjust(pvalue, method = "bonferroni")) %>%
+  arrange(pvalue)
+```
 
 # Save
 
+```{r}
+write.csv(des.res.df, "../data/deseq2_R-v_NR.csv", row.names = F)
+```
