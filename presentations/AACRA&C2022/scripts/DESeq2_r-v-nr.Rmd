@@ -93,6 +93,7 @@ write.csv(choose.samps, "../data/clinical_earliest-microbe-samps.csv", row.names
 
 ```{r}
 metdat <- choose.samps %>%
+  filter(patient.id != "4035") %>%
   filter(sequence.id %in% colnames(mics)) %>%
   mutate(patient.id = as.character(patient.id)) %>%
   inner_join(response.modin)
