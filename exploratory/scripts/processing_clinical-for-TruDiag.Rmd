@@ -78,6 +78,7 @@ idkeys.form <- bind_rows(idkeys.keyon) %>%
 colnames(clin)[1] <- "id"
 clin2 <- clin %>%
   select(id, redcap_event_name, age, sex, contains("tox")) %>%
+  select(-contains("date")) %>%
   left_join(idkeys.form) %>%
   drop_na(patient.id) %>%
   distinct() %>%
