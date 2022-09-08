@@ -1,0 +1,96 @@
+---
+title: "AACR A&C 2022 response deseq"
+output: html_document
+date: '2022-09-06'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readxl)
+```
+
+# Load data
+
+```{r}
+response <- read_excel("T:/Labs/Spakowicz/fitness/data/raw/FITNESS lung RECIST final collection.xlsx",
+                       sheet = "Data collection",
+                       col_names = F)
+
+clin <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/CoRR5512FITNESSCalcu_DATA_2022-05-31_0923.csv", stringsAsFactors = F)
+
+idkeys.SpakPres <- lapply(1:2, function(x) read_excel(path =                                             "T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/OSU-18055 shared patient log.xlsx",
+                                             sheet = x))
+```
+
+# Format
+
+## Response
+
+```{r}
+extractRESCIST <- function(data){
+  # Which rows contain our main info [patient and final recist?]
+  recordlines <- grep("Record ID", data$...1)
+  targetlines <- grep("Target Lesion Response", data$...1)
+  
+  # Which columns have recist in them?
+  data.respcols <- data[, c(4,7,10,13)]
+  colnames(data.respcols) <- c("Baseline", "month3", 
+                               "month6", "month12")
+  
+  # Grab only rows/column combos with recist, then label with patient
+  data.resprows <- data.respcols[targetlines,]
+  data.resprows$patient.id <- data$...1[recordlines]
+  
+  # Minor formatting
+  respdat.form <- data.resprows %>%
+    mutate(patient.id = gsub("Record ID. ", "", patient.id)) %>%
+    pivot_longer(-patient.id, names_to = "Timepoint",
+                 values_to = "RECIST")
+  
+  return(respdat.form)
+
+  }
+```
+
+```{r}
+response.form <- extractRESCIST(response) %>%
+  distinct() %>%
+  pivot_wider(names_from = Timepoint, values_from = RECIST) %>%
+  select(-Baseline) %>%
+  as.data.frame() 
+
+response.form$month3 <- lapply(response.form$month3, function(x) paste(x, collapse = ", "))
+response.form <- response.form %>%
+  unnest(cols = c(month3, month6, month12))
+colnames(response.form)[2:4] <- paste0("RECIST_", colnames(response.form[2:4]))
+```
+
+```{r}
+idkeys.keyon <- lapply(idkeys.SpakPres, function(x) x[, 1:2])
+idkeys.form <- bind_rows(idkeys.keyon) %>%
+  pivot_longer(-`study ID`, names_to = "sheet", values_to = "id") %>%
+  mutate(patient.id = as.character(`study ID`)) %>%
+  filter(!is.na(id)) %>%
+  select(patient.id, id)
+
+colnames(clin)[1] <- "id"
+clin2 <- clin %>%
+  select(id, age, sex, contains("tox")) %>%
+  left_join(idkeys.form) %>%
+  drop_na(patient.id) %>%
+  distinct() %>%
+  left_join(response.form) %>%
+  select(-id) %>%
+  select(patient.id, everything()) %>%
+  as.data.frame()
+```
+
+
+
+# Save
+
+```{r}
+write.csv(clin2, "../data/clinical_for-TruDiag.csv", row.names = F)
+```
