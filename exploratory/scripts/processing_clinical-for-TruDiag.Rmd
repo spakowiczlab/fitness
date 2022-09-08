@@ -77,7 +77,12 @@ idkeys.form <- bind_rows(idkeys.keyon) %>%
 
 colnames(clin)[1] <- "id"
 clin2 <- clin %>%
-  select(id, redcap_event_name, age, sex, contains("tox")) %>%
+  mutate(hospital_yn = ifelse(transplant_admiss_date!= "", "y", "n")) %>%
+  select(id, redcap_event_name, age, sex, offstudy_reason, 
+         carg_score, sppb_score, promis_score, comorb_score,
+         mental_health, bmi, ecog, lung_cancer_type,iadl_score,
+         drugsinreg_pharm, hospital_yn, mhi_score,
+         contains("tox")) %>%
   select(-contains("date")) %>%
   left_join(idkeys.form) %>%
   drop_na(patient.id) %>%
