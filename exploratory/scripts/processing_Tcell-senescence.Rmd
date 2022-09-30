@@ -1,0 +1,25 @@
+---
+title: "Diversity and senescence"
+output: html_document
+date: '2022-09-30'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+# Load data
+
+```{r}
+clin <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/clinical-OC-matched_resolved.csv",
+                 stringsAsFactors = F)
+
+
+```
+# Calculate T cell senescence
+
+# Save
+
+

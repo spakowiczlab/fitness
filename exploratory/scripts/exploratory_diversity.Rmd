@@ -16,7 +16,7 @@ library(vegan)
 # Load data
 
 ```{r}
-mettab <- read.table("T:/Labs/Spakowicz/fitness/data/merged_metaphlan_output.txt",
+mettab <- read.table("T:/Labs/Spakowicz/fitness/data/derived/merged_metaphlan_output.txt",
                      header = T, stringsAsFactors = F)
 clin <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/clinical-OC-matched_resolved.csv",
                  stringsAsFactors = F)
@@ -44,4 +44,15 @@ test["FF05466606"]
 
 # DL081
 test["FF05466567"]
+```
+
+# Format and save
+
+```{r}
+div.tab <- test %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "sample") %>%
+  rename("Simpson.div" = ".")
+
+write.csv(div.tab, "../data/OC_simpson-diversity.csv")
 ```
