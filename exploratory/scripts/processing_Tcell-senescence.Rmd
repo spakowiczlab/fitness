@@ -8,6 +8,8 @@ date: '2022-09-30'
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
+library(readxl)
+library(tmesig)
 ```
 
 # Load data
@@ -15,10 +17,24 @@ library(tidyverse)
 ```{r}
 clin <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/clinical-OC-matched_resolved.csv",
                  stringsAsFactors = F)
-
-
+nanostring <- read_excel("T:/Labs/Spakowicz/fitness/data/raw/nanostring/RoskoPresley_NanostringJune2022.xlsx", sheet = 3)
 ```
+
 # Calculate T cell senescence
+
+```{r}
+nanostring.form <- nanostring[-(1:2),] %>%
+  rename("Gene.Symbol" = "Probe Name") %>%
+  select(-c("Annotation", "Accession #", "NS Probe ID", "Class Name",
+            "Analyte Type", "% Samples above Threshold")) %>%
+  mutate(across(contains("Presley"), as.numeric))
+```
+
+```{r}
+sensgenes <- c("CDKN2A (p16)", "CDKN2A (ARF)", "B3GAT1", "KLRG1")
+
+tsen <- calculateAvgZScore(nanostring.form, sensgenes)
+```
 
 # Save
 
