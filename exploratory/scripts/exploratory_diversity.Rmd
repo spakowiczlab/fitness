@@ -49,10 +49,14 @@ test["FF05466567"]
 # Format and save
 
 ```{r}
+clin.red <- clin %>%
+  select(sequence.id, redcap_event_name) %>%
+  rename("sample" = "sequence.id")
 div.tab <- test %>%
   as.data.frame() %>%
   rownames_to_column(var = "sample") %>%
-  rename("Simpson.div" = ".")
+  rename("Simpson.div" = ".") %>%
+  inner_join(clin.red)
 
 write.csv(div.tab, "../data/OC_simpson-diversity.csv")
 ```
