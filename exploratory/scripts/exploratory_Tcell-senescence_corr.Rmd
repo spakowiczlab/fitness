@@ -1,0 +1,59 @@
+---
+title: "Correlations with senescence"
+output: html_document
+date: '2022-10-03'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(broom)
+```
+
+# Load data
+
+```{r}
+clin <- read.csv("T:/Labs/Spakowicz/fitness/data/derived/clinical-OC-matched_resolved_limited.csv",
+                 stringsAsFactors = F)
+tsen <- read.csv("../data/Tcell-senescence.csv")
+```
+
+# Format and analyses
+```{r}
+GA.score <- c("carg_score", "sppb_score", "blessed_score", "iadl_score", "promis_score")
+```
+
+```{r}
+formatForCorr <- function(){
+  modin <- clin %>%
+    select(c("patient.id", "redcap_event_name", GA.score)) %>%
+    mutate(visit = case_when(redcap_event_name == "study_visit_1_arm_2" ~ "SV1",
+                             redcap_event_name == "study_visit_2_arm_2" ~ "SV2",
+                             redcap_event_name == "study_visit_3_arm_2" ~ "SV3",
+                             redcap_event_name == "study_visit_4_arm_2" ~ "SV4")) %>%
+    inner_join(tsen)
+  
+  return(modin)
+}
+
+TcellGAcorrs <- function(){
+  modin <- formatForCorr()
+  
+  corr.res <- lapply(GA.score, function(x) cor.test(modin[[x]], modin[["Tcell.Senescence"]], 
+                                                    method = "spearman") %>%
+                       tidy() %>%
+                       mutate(GeriatricAssessment = x)) %>%
+    bind_rows()
+  
+  return(corr.res)
+}
+```
+
+# Visualize
+
+```{r}
+GA.res <- TcellGAcorrs()
+
+GA.res
+```

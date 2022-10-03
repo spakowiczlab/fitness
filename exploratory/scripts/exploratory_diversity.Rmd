@@ -50,7 +50,7 @@ test["FF05466567"]
 
 ```{r}
 clin.red <- clin %>%
-  select(sequence.id, redcap_event_name) %>%
+  select(patient.id, sequence.id, redcap_event_name) %>%
   rename("sample" = "sequence.id")
 div.tab <- test %>%
   as.data.frame() %>%
@@ -58,5 +58,5 @@ div.tab <- test %>%
   rename("Simpson.div" = ".") %>%
   inner_join(clin.red)
 
-write.csv(div.tab, "../data/OC_simpson-diversity.csv")
+write.csv(div.tab, "../data/OC_simpson-diversity.csv", row.names = F)
 ```
