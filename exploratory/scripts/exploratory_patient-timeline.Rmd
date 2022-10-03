@@ -1,0 +1,127 @@
+---
+title: "Concomitant PPI"
+author: "Rebecca Hoyd"
+date: "7/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(viridis)
+library(readxl)
+library(stringr)
+```
+
+
+# Load data
+
+```{r}
+paths.tdrive <- "T:/Labs/Spakowicz/fitness"
+paths.controlled <- "T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/"
+
+ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
+
+clin.withdate <- read.csv(file.path(paths.controlled, "clinical-OC-matched_resolved.csv"), stringsAsFactors = F)
+
+```
+
+# Format
+
+```{r}
+clinFormFirstPass <- function(){
+  tmp <- clin.withdate %>%
+    select(patient.id, offstudy, enrollment_date) 
+  
+  tmp1 <- clin.withdate %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", contains("tx_reg")) %>%
+    group_by(patient.id) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date),
+           earliest_day = min(stool_sample_date),
+           elapsed.days = as.numeric(stool_sample_date - earliest_day)) %>%
+    ungroup() %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", "earliest_day", "elapsed.days", contains("tx_reg"))
+  return(tmp1)
+}
+
+definePatientTreatments <- function(){
+  clin.filt.days <- clinFormFirstPass()
+  
+  ICI.meds <- ICI.meds.raw %>%
+    rename(ici.nums = ...1,
+           ici.name = `Category (chemo, chemo + io, io, targeted, targeted+chemo)`) %>%
+    mutate(ici.name =str_replace_all(ici.name, "\\s", ""))
+  
+  patient.treatkey <- clin.filt.days %>%
+    mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
+    select(patient.id, redcap_event_name, ici.nums) %>%
+    drop_na(ici.nums) %>%
+    mutate(ici.nums = as.numeric(ici.nums)) %>%
+    left_join(ICI.meds) %>%
+    group_by(patient.id, ici.name) %>%
+    tally() %>%
+    pivot_wider(names_from = ici.name, values_from = n) %>%
+    mutate(chemo_io = !is.na(`chemo+io`),
+           io = !is.na(io),
+           chemo = !is.na(chemo),
+           targeted = !is.na(targeted),
+           collapsed.treat = ifelse(chemo_io == T,
+                                    ifelse(targeted == T, "chemo,io,targeted", "chemo,io"),
+                                    ifelse(chemo == T,
+                                           ifelse(io == T, "chemo,io", "chemo"),
+                                           ifelse(io == T, "io", "targeted")))
+    ) %>%
+    select(patient.id, collapsed.treat) %>%
+    rename("summarise_treatment" = "collapsed.treat")
+  
+  return(patient.treatkey)
+}
+
+
+formatForPlot <- function(){
+  
+  clin.filt.days <- clinFormFirstPass()
+  pattreatkey <- definePatientTreatments()
+  
+  ribbon.in <- pattreatkey %>%
+    arrange(summarise_treatment) %>%
+    ungroup() %>%
+    mutate(patnum = row_number(),
+           rib.low = patnum - .45,
+           rib.hi = patnum + .45)
+  
+  numpatkey <- ribbon.in %>%
+    select(patient.id, patnum)
+  
+  clin.timein.days <- clin.filt.days %>%
+    select(patient.id, sequence.id, redcap_event_name, elapsed.days) %>%
+    left_join(numpatkey)
+  
+  plot.inputs <- list(clin.timein.days, ribbon.in)
+  names(plot.inputs) <- c("timeline", "ribbon")
+  
+  return(plot.inputs)
+}
+```
+
+# Visualize timelines
+
+
+```{r}
+timein <- formatForPlot()
+
+ggplot() +
+  geom_rect(data = timein$ribbon, aes(ymin = rib.low, ymax = rib.hi, fill = summarise_treatment),
+            alpha = .5, xmin = 0, xmax = 740) +
+  geom_point(data = timein$timeline, aes(x = elapsed.days, y = patnum)) +
+  scale_fill_viridis_d(name = "Treatment", breaks = c("chemo", "chemo,io", "io", "targeted"),
+                       labels = c("Chemo", "Chemo+IO", "IO", "Targeted")) +
+  theme_bw()
+
+ggsave("../figures/timeline_fitness-patients.png")
+```
+
