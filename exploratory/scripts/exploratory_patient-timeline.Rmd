@@ -35,16 +35,23 @@ clin.withdate <- read.csv(file.path(paths.controlled, "clinical-OC-matched_resol
 ```{r}
 clinFormFirstPass <- function(){
   tmp <- clin.withdate %>%
-    select(patient.id, offstudy, enrollment_date) 
+    select(patient.id, offstudy, enrollment_date) %>%
+    filter(!(offstudy == "" & enrollment_date == "")) %>%
+    mutate(offstudy = as.Date(offstudy),
+           enrollment_date = as.Date(enrollment_date))
   
   tmp1 <- clin.withdate %>%
     select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", contains("tx_reg")) %>%
     group_by(patient.id) %>%
     mutate(stool_sample_date = as.Date(stool_sample_date),
-           earliest_day = min(stool_sample_date),
-           elapsed.days = as.numeric(stool_sample_date - earliest_day)) %>%
+           earliest_day = min(stool_sample_date)) %>%
+    left_join(tmp) %>%
+    mutate(
+      elapsed.days = ifelse(is.na(enrollment_date), 
+                            as.numeric(stool_sample_date - earliest_day),
+                            as.numeric(stool_sample_date - enrollment_date))) %>%
     ungroup() %>%
-    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", "earliest_day", "elapsed.days", contains("tx_reg"))
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", "earliest_day", "enrollment_date", "offstudy", "elapsed.days", contains("tx_reg"))
   return(tmp1)
 }
 
@@ -97,12 +104,24 @@ formatForPlot <- function(){
   numpatkey <- ribbon.in %>%
     select(patient.id, patnum)
   
+  clin.timespan <- clin.filt.days %>% 
+    select(patient.id, enrollment_date,earliest_day, stool_sample_date, offstudy, elapsed.days) %>%
+    group_by(patient.id) %>%
+    filter(elapsed.days == max(elapsed.days)) %>%
+    ungroup() %>%
+    mutate(max.date = ifelse(!is.na(offstudy), as.numeric(offstudy - enrollment_date),
+                             elapsed.days)) %>%
+    select(patient.id, max.date) %>%
+    left_join(numpatkey)
+  
+
+  
   clin.timein.days <- clin.filt.days %>%
     select(patient.id, sequence.id, redcap_event_name, elapsed.days) %>%
     left_join(numpatkey)
   
-  plot.inputs <- list(clin.timein.days, ribbon.in)
-  names(plot.inputs) <- c("timeline", "ribbon")
+  plot.inputs <- list(clin.timein.days, clin.timespan, ribbon.in)
+  names(plot.inputs) <- c("samples", "timeline", "ribbon")
   
   return(plot.inputs)
 }
@@ -116,10 +135,14 @@ timein <- formatForPlot()
 
 ggplot() +
   geom_rect(data = timein$ribbon, aes(ymin = rib.low, ymax = rib.hi, fill = summarise_treatment),
-            alpha = .5, xmin = 0, xmax = 740) +
-  geom_point(data = timein$timeline, aes(x = elapsed.days, y = patnum)) +
+            alpha = .5, xmin = 0, xmax = 755) +
+  geom_segment(data = timein$timeline, aes(x = 0, xend = max.date, 
+                                           y = patnum, yend = patnum)) +
+  geom_point(data = timein$samples, aes(x = elapsed.days, y = patnum)) +
   scale_fill_viridis_d(name = "Treatment", breaks = c("chemo", "chemo,io", "io", "targeted"),
                        labels = c("Chemo", "Chemo+IO", "IO", "Targeted")) +
+  scale_y_continuous(breaks = timein$ribbon$patnum, labels = timein$ribbon$patient.id) +
+  labs(x = "Days", y = "Patient ID") +
   theme_bw()
 
 ggsave("../figures/timeline_fitness-patients.png")
