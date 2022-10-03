@@ -17,11 +17,13 @@ library(broom)
 clin <- read.csv("T:/Labs/Spakowicz/fitness/data/derived/clinical-OC-matched_resolved_limited.csv",
                  stringsAsFactors = F)
 tsen <- read.csv("../data/Tcell-senescence.csv")
+nano <- read.csv("../data/nanostring_extracted.csv")
 ```
 
 # Format and analyses
 ```{r}
 GA.score <- c("carg_score", "sppb_score", "blessed_score", "iadl_score", "promis_score")
+nano.genes <- colnames(nano)[-c(1:2)]
 ```
 
 ```{r}
@@ -48,6 +50,35 @@ TcellGAcorrs <- function(){
   
   return(corr.res)
 }
+
+```
+
+```{r}
+formatForCorrGene <- function(){
+    modin <- clin %>%
+    select(c("patient.id", "redcap_event_name", GA.score)) %>%
+    mutate(visit = case_when(redcap_event_name == "study_visit_1_arm_2" ~ "SV1",
+                             redcap_event_name == "study_visit_2_arm_2" ~ "SV2",
+                             redcap_event_name == "study_visit_3_arm_2" ~ "SV3",
+                             redcap_event_name == "study_visit_4_arm_2" ~ "SV4")) %>%
+    inner_join(nano)
+  
+  return(modin)
+}
+
+GeneGAcorrs <- function(){
+  modin <- formatForCorrGene()
+  
+  corr.res <- lapply(GA.score, function(x) 
+    lapply(nano.genes, function(y) cor.test(modin[[x]], modin[[y]], 
+                                            method = "spearman") %>%
+             tidy() %>%
+             mutate(GeriatricAssessment = x, gene = y) %>%
+             bind_rows())) %>%
+    bind_rows()
+  
+  return(corr.res)
+}
 ```
 
 # Visualize
@@ -56,4 +87,10 @@ TcellGAcorrs <- function(){
 GA.res <- TcellGAcorrs()
 
 GA.res
+```
+
+```{r}
+gene.GA.res <- GeneGAcorrs() %>%
+  mutate(padj = p.adjust(p.value, method = "fdr"))
+write.csv(gene.GA.res, "../data/correlations_GA-genes.csv", row.names = F)
 ```

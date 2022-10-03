@@ -44,9 +44,29 @@ tsen <- calculateAvgZScore(nanostring.form, sensgenes) %>%
   drop_na(visit)
 ```
 
+# Also format nanostring output
+
+```{r}
+nano.extract <- nanostring.form %>%
+  column_to_rownames(var = "Gene.Symbol") %>%
+  t() %>%
+  as.data.frame() %>%
+  rownames_to_column(var = "sample") %>%
+  mutate(patient.id = gsub(".*_(.*) SV.*", "\\1", sample),
+         visit = case_when(grepl("SV1", sample) ~ "SV1",
+                           grepl("SV2", sample) ~ "SV2",
+                           grepl("SV3", sample) ~ "SV3",
+                           grepl("SV4", sample) ~ "SV4")) %>%
+  select(-sample) %>%
+  select(patient.id, visit, everything()) %>%
+  drop_na(visit)
+```
+
+
 # Save
 
 ```{r}
 write.csv(tsen, "../data/Tcell-senescence.csv", row.names = F)
+write.csv(nano.extract, "../data/nanostring_extracted.csv", row.names = F)
 ```
 
