@@ -16,6 +16,8 @@ source("00-paths.R")
 ```
 
 This document is just to check which microbe samples match with which visits we have info on based on the data available in redcapp. I am not making any final objects at this point.
+
+All files have been moved of copied to T:/Labs/Presley/FITNESS-lung/Microbiome-Rebecca/fitness_sample-matching!
 # Load data
 
 ```{r}
