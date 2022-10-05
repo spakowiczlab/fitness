@@ -26,44 +26,211 @@ paths.controlled <- "T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/"
 
 ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
 
-clin.withdate <- read.csv(file.path(paths.controlled, "clinical-OC-matched_resolved.csv"), stringsAsFactors = F)
+clin.withdate <- read.csv(file.path(paths.controlled, "CoRR5512FITNESSCalcu_DATA_2022-10-04_1152.csv"), stringsAsFactors = F)
+colnames(clin.withdate)[1] <- "id"
+
+key.microbe <- read.csv(file.path(paths.controlled, "key_fitness-microbe-clin.csv"))
+
+bloodinfo <- read_excel("T:/Labs/Spakowicz/fitness/data/derived/TruDiagnostic Patient Info.xlsx")
 
 ```
 
 # Format
 
 ```{r}
-clinFormFirstPass <- function(){
-  tmp <- clin.withdate %>%
-    select(patient.id, offstudy, enrollment_date) %>%
-    filter(!(offstudy == "" & enrollment_date == "")) %>%
-    mutate(offstudy = as.Date(offstudy),
-           enrollment_date = as.Date(enrollment_date))
+matchMicrobes <- function(){
+  tmp <- key.microbe %>%
+    left_join(clin.withdate)
   
-  tmp1 <- clin.withdate %>%
-    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", contains("tx_reg")) %>%
-    group_by(patient.id) %>%
-    mutate(stool_sample_date = as.Date(stool_sample_date),
-           earliest_day = min(stool_sample_date)) %>%
-    left_join(tmp) %>%
-    mutate(
-      elapsed.days = ifelse(is.na(enrollment_date), 
-                            as.numeric(stool_sample_date - earliest_day),
-                            as.numeric(stool_sample_date - enrollment_date))) %>%
-    ungroup() %>%
-    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", "earliest_day", "enrollment_date", "offstudy", "elapsed.days", contains("tx_reg"))
-  return(tmp1)
+  return(tmp)
 }
 
-definePatientTreatments <- function(){
-  clin.filt.days <- clinFormFirstPass()
+filterBloodPAts <- function(){
+  tmp <- bloodinfo %>%
+    rename("patient.id" = "Study ID") %>%
+    filter(!grepl("^1", patient.id) & !grepl("LTB", patient.id)) %>%
+    filter(Clinic == "Lung")
   
+  return(tmp)
+}
+
+pullIDKey <- function(){
+  tmp <- clin.withdate %>%
+    select(id, sid_2) %>%
+    drop_na()
+  return(tmp)
+}
+```
+
+```{r handle dates}
+determineEarliestDay <- function(){
+  enroll <- clin.withdate %>%
+    select(sid_2, enrollment_date) %>%
+    filter(!enrollment_date == "") %>%
+    mutate(enrollment_date = as.Date(enrollment_date)) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  stool <- matchMicrobes() %>%
+    filter(is.na(redcap_repeat_instance)) %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date") %>%
+    drop_na(sequence.id) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+    group_by(patient.id) %>%
+    summarise(earliest_day_stool = min(stool_sample_date))  %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  bloodinfo.red <- filterBloodPAts() %>%
+    mutate(blood_date = as.Date(gsub("2109", "2019",`Date Sample Drawn`))) %>%
+    ungroup() %>%
+    group_by(patient.id) %>%
+    summarize(ealiest_day_blood = min(blood_date))
+  
+  datecompare <- stool %>%
+    full_join(bloodinfo.red) %>%
+    left_join(enroll) %>%
+    mutate(earliest_day = as.Date(ifelse(!is.na(enrollment_date), enrollment_date,
+                                 ifelse(earliest_day_stool < ealiest_day_blood,
+                                        earliest_day_stool, ealiest_day_blood)),
+                                 origin = "1970-01-01")
+           )%>%
+  select(patient.id, earliest_day)
+  
+  return(datecompare)
+}
+
+determineEndDate <- function(){
+    offstudy <- clin.withdate %>%
+    select(sid_2, offstudy) %>%
+    filter(!offstudy == "") %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(offstudy = as.Date(offstudy),
+           patient.id = as.character(patient.id))
+  
+  stool <- matchMicrobes() %>%
+    filter(is.na(redcap_repeat_instance)) %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date") %>%
+    drop_na(sequence.id) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+    group_by(patient.id) %>%
+    summarise(max_day_stool = max(stool_sample_date))  %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  bloodinfo.red <- filterBloodPAts() %>%
+    mutate(blood_date = as.Date(gsub("2109", "2019",`Date Sample Drawn`))) %>%
+    ungroup() %>%
+    group_by(patient.id) %>%
+    summarize(max_day_blood = max(blood_date))
+  
+  datecompare <- stool %>%
+    full_join(bloodinfo.red) %>%
+    left_join(offstudy) %>%
+    mutate(max_day_stool = as.Date(ifelse(is.na(max_day_stool), as.Date("2000-01-01"), max_day_stool),
+                                   origin = "1970-01-01"),
+           max_day_blood = as.Date(ifelse(is.na(max_day_blood), as.Date("2000-01-01"), max_day_blood),
+                                   origin = "1970-01-01"),
+           end_day = as.Date(ifelse(!is.na(offstudy), offstudy,
+                                    ifelse(max_day_stool < max_day_blood,
+                                           max_day_blood, max_day_stool)),
+                             origin = "1970-01-01")
+    ) %>%
+  select(patient.id, end_day)
+  
+  return(datecompare)
+}
+
+getTimespans <- function(){
+  earlydate <- determineEarliestDay()
+  enddate <- determineEndDate()
+  
+  tspans <- full_join(earlydate, enddate) %>%
+    mutate(max.date = as.numeric(end_day - earliest_day)) %>%
+    select(patient.id, max.date)
+  
+  return(tspans)
+}
+
+clinFormFirstPass <- function(){
+  earlydate <- determineEarliestDay()
+  
+  tmp <- matchMicrobes() %>%
+    filter(is.na(redcap_repeat_instance)) %>%
+    mutate(patient.id = as.character(patient.id)) %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", contains("tx_reg")) %>%
+    left_join(earlydate) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date),
+           elapsed.days = as.numeric(stool_sample_date - earliest_day)) %>%
+    mutate(sampletype = "stool")
+  return(tmp)
+}
+
+getBloodDates <- function(){
+  earlydate <- determineEarliestDay()
+  
+  blood.elapsed <- filterBloodPAts()%>% 
+    mutate(sequence.id = `Accession #`,
+           blood_date = as.Date(gsub("2109", "2019",`Date Sample Drawn`))) %>%
+    left_join(earlydate) %>%
+    mutate(elapsed.days = as.numeric(blood_date - earliest_day)) %>%
+    select(patient.id, sequence.id, elapsed.days) %>%
+    mutate(sampletype = "blood")
+}
+
+
+getGAdates <- function(){
+  # Determine which study visits have any GAs done
+  GAcols <- clin.withdate %>%
+    select( id, redcap_event_name, sppb_score, blessed_score, iadl_score, carg_score, tug) %>%
+    pivot_longer(-c("id", "redcap_event_name"), names_to = "GA", values_to =  "score") %>%
+    drop_na(score) %>%
+    group_by(id, redcap_event_name) %>%
+    tally() %>%
+    mutate(visitname = case_when(grepl("visit_1", redcap_event_name) ~ "SV1",
+                                 grepl("visit_2", redcap_event_name) ~ "SV2",
+                                 grepl("visit_3", redcap_event_name) ~ "SV3",
+                                 grepl("visit_4", redcap_event_name) ~ "SV4"))
+  
+  # Pull the dates for those visits
+  GAdates <- clin.withdate %>%
+    select(id, contains("complete_date")) %>%
+    pivot_longer(-id, names_to = "visit", values_to = "date") %>%
+    filter(date != "") %>%
+    mutate(visitname = case_when(grepl("visit_1", visit) ~ "SV1",
+                                 grepl("visit_2", visit) ~ "SV2",
+                                 grepl("visit_3", visit) ~ "SV3",
+                                 grepl("visit_4", visit) ~ "SV4"))
+  
+  earlydate <- determineEarliestDay()
+  
+  GAdates.plot <- GAdates %>%
+    left_join(GAcols) %>%
+    left_join(pullIDKey()) %>%
+    mutate(sampletype = "GA",
+           patient.id = as.character(sid_2),
+           date = as.Date(date),
+           sequence.id = visitname) %>%
+    left_join(earlydate) %>%
+    mutate(elapsed.days = as.numeric(date - earliest_day)) %>%
+    drop_na(elapsed.days) %>% 
+    select(patient.id, redcap_event_name, sequence.id, elapsed.days, sampletype)
+  
+  return(GAdates.plot)
+}
+```
+
+```{r handle treatments}
+definePatientTreatments <- function(){
   ICI.meds <- ICI.meds.raw %>%
     rename(ici.nums = ...1,
            ici.name = `Category (chemo, chemo + io, io, targeted, targeted+chemo)`) %>%
     mutate(ici.name =str_replace_all(ici.name, "\\s", ""))
   
-  patient.treatkey <- clin.filt.days %>%
+  redstudkey <- pullIDKey()
+  
+  patient.treatkey <- clin.withdate %>%
+    select(-sid_2) %>%
+    left_join(redstudkey) %>%
+    rename("patient.id" = "sid_2") %>%
     mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
     select(patient.id, redcap_event_name, ici.nums) %>%
     drop_na(ici.nums) %>%
@@ -87,38 +254,51 @@ definePatientTreatments <- function(){
   
   return(patient.treatkey)
 }
+```
 
 
-formatForPlot <- function(){
+```{r combine for plot}
+formatForPlot <- function(stool.only){
   
-  clin.filt.days <- clinFormFirstPass()
+  mics.days <- clinFormFirstPass()
+  blood.days <- getBloodDates()
   pattreatkey <- definePatientTreatments()
+  
+  if(stool.only == T){
+    stool.patients <- unique(mics.days$patient.id)
+    pattreatkey <- pattreatkey %>%
+      filter(patient.id %in% stool.patients)
+  }
   
   ribbon.in <- pattreatkey %>%
     arrange(summarise_treatment) %>%
     ungroup() %>%
+    filter(patient.id != "3051" & 
+             (patient.id %in% mics.days$patient.id | patient.id %in% blood.days$patient.id)) %>%
     mutate(patnum = row_number(),
            rib.low = patnum - .45,
-           rib.hi = patnum + .45)
+           rib.hi = patnum + .45) %>%
+    mutate(patient.id = as.character(patient.id))
   
   numpatkey <- ribbon.in %>%
     select(patient.id, patnum)
   
-  clin.timespan <- clin.filt.days %>% 
-    select(patient.id, enrollment_date,earliest_day, stool_sample_date, offstudy, elapsed.days) %>%
-    group_by(patient.id) %>%
-    filter(elapsed.days == max(elapsed.days)) %>%
-    ungroup() %>%
-    mutate(max.date = ifelse(!is.na(offstudy), as.numeric(offstudy - enrollment_date),
-                             elapsed.days)) %>%
-    select(patient.id, max.date) %>%
-    left_join(numpatkey)
+  GA.samples <- getGAdates() %>%
+    filter(patient.id %in% numpatkey$patient.id)
   
-
+  clin.timespan <- getTimespans() %>%
+    left_join(numpatkey) %>%
+    filter(patient.id != "3051") %>%
+    drop_na(patnum)
   
-  clin.timein.days <- clin.filt.days %>%
-    select(patient.id, sequence.id, redcap_event_name, elapsed.days) %>%
-    left_join(numpatkey)
+  
+  clin.timein.days <- mics.days %>%
+    select(patient.id, sequence.id, redcap_event_name, elapsed.days, sampletype) %>%
+    bind_rows(blood.days) %>%
+    bind_rows(GA.samples) %>%
+    left_join(numpatkey) %>%
+    filter(patient.id != "3051") %>%
+    drop_na(patnum)
   
   plot.inputs <- list(clin.timein.days, clin.timespan, ribbon.in)
   names(plot.inputs) <- c("samples", "timeline", "ribbon")
@@ -131,19 +311,22 @@ formatForPlot <- function(){
 
 
 ```{r}
-timein <- formatForPlot()
+# timein <- formatForPlot(stool.only = T)
+# saveRDS(timein, "../data/timeline_stool-patient-only.RDS")
+# saveRDS(timein, "../data/timeline_all-lung-clinic.RDS")
+timein <- readRDS("../data/timeline_all-lung-clinic.RDS")
 
 ggplot() +
   geom_rect(data = timein$ribbon, aes(ymin = rib.low, ymax = rib.hi, fill = summarise_treatment),
             alpha = .5, xmin = 0, xmax = 755) +
   geom_segment(data = timein$timeline, aes(x = 0, xend = max.date, 
                                            y = patnum, yend = patnum)) +
-  geom_point(data = timein$samples, aes(x = elapsed.days, y = patnum)) +
+  geom_point(data = timein$samples, aes(x = elapsed.days, y = patnum, shape = sampletype)) +
   scale_fill_viridis_d(name = "Treatment", breaks = c("chemo", "chemo,io", "io", "targeted"),
                        labels = c("Chemo", "Chemo+IO", "IO", "Targeted")) +
   scale_y_continuous(breaks = timein$ribbon$patnum, labels = timein$ribbon$patient.id) +
   labs(x = "Days", y = "Patient ID") +
-  theme_bw()
+  theme_classic()
 
 ggsave("../figures/timeline_fitness-patients.png")
 ```
