@@ -182,3 +182,19 @@ GA.long <- lapply(GA.score[2:5], function(x) long_mods(x, c("Tcell.Senescence", 
 
 write.csv(GA.long, "../data/longitudinal-modeling_nanostring.csv", row.names = F)
 ```
+
+```{r scatter blessed Tcell}
+scatterin <- formatForCorr()
+pval = GA.res %>%
+  filter(GeriatricAssessment == "blessed_score") %>%
+  select(p.value)
+pval <- round(pval[1,1], 3)
+scatterin %>%
+  ggplot(aes(x = blessed_score, y = Tcell.Senescence)) +
+  geom_point() +
+  geom_text(inherit.aes = F, x = 7, y = .1, label = paste0("p.value = ",pval))+
+  stat_smooth(method = "lm") +
+  labs(x = "BLESSED") +
+  theme_bw()
+ggsave("../figures/scatterplot_Tcell-blessed.png")
+```
