@@ -11,7 +11,6 @@ library(tidyverse)
 library(DESeq2)
 library(readxl)
 library(rlist)
-library(ggrepel)
 ```
 
 # Load data
@@ -149,21 +148,6 @@ des.res.df <- bind_rows(list.clean(des.res, fun = is.character)) %>%
   arrange(pvalue)
 ```
 
-# Plot
-
-```{r}
-des.res.df %>%
-  mutate(taxlab = ifelse(padj < 0.05, TaxaLevel,NA),
-         textlab = ifelse(is.na(taxlab), NA, gsub(".*\\|\\w__", "",microbe))) %>%
-  ggplot(aes(x = log2FoldChange, y = -log(padj, base = 10), color = taxlab, label = textlab)) +
-  geom_point() +
-  geom_text_repel(size = 2, show.legend = F) +
-  labs(y = "-log(adjusted p.value)") +
-  scale_color_viridis_d(na.value = "grey", name = "") +
-  geom_hline(yintercept = -log(0.05, base = 10), lty = 2) +
-  geom_vline(xintercept = c(-10, 10), lty = 2) 
-ggsave("../figures/volcano_deseq_r-v-nr.png")
-```
 
 # Save
 
