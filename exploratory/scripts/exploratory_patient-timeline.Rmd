@@ -15,6 +15,7 @@ library(ggplot2)
 library(viridis)
 library(readxl)
 library(stringr)
+library(forcats)
 ```
 
 
@@ -32,6 +33,8 @@ colnames(clin.withdate)[1] <- "id"
 key.microbe <- read.csv(file.path(paths.controlled, "key_fitness-microbe-clin.csv"))
 
 bloodinfo <- read_excel("T:/Labs/Spakowicz/fitness/data/derived/TruDiagnostic Patient Info.xlsx")
+
+recist <- read.csv("../data/RECIST.csv")
 
 ```
 
@@ -218,6 +221,51 @@ getGAdates <- function(){
 }
 ```
 
+There's some pretty obvious issues with adding the toxicity events. First, there are no clear dates associated with these, instead they are defined by the cycle in which the toxicities started and ended, and I have to infer dates for these for treatment start and stop. I believe this was done to better match the way the stool samples were annotated before it was matched fully to the database. The start dates have plenty of missing information. I am also choosing to represent the toxicity time frames as single points of onset at the beginning of the cycle they are associated with, which doesn't entirely make sense.
+
+Most of these problems don't apply when going to model microbes with toxicity, as you'd simply pull the rows associated with each microbe sample, but creates problems if you want to view all toxicity data in relation to the other measures in the database. I think this problem will primarily be confined to this timeline.
+```{r toxicity manipulations}
+ToxFormDates <- function(){
+  earlydate <- determineEarliestDay()
+  idkey <- pullIDKey()
+  
+  cycle.dates <- clin.withdate %>%
+    select(id, redcap_event_name, redcap_repeat_instrument,
+           start_date_1) %>% 
+    filter(redcap_repeat_instrument == "" &
+             # grepl("cycle", redcap_event_name) & 
+             start_date_1 != "") %>%
+    # mutate(tox_onset_new2 = gsub(".*visit_(.*)_arm.*", "\\1",
+    #                              redcap_event_name)) %>%
+    left_join(idkey) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(patient.id = as.character(patient.id)) %>%
+    left_join(earlydate) %>%
+    drop_na(earliest_day) %>%
+    mutate(earliest_day = as.Date(earliest_day),
+           start_date_1 = as.Date(start_date_1),
+           elapsed.days = as.numeric(start_date_1 - earliest_day)) %>%
+    select(patient.id, redcap_event_name, elapsed.days)
+  
+  
+  toxnest <- clin.withdate %>%
+    filter(redcap_repeat_instrument == "adverse_events_and_toxicities_new") %>%
+    select(id, tox_grade_new, redcap_event_name) %>%
+    drop_na(tox_grade_new) %>%
+    group_by(id, redcap_event_name) %>%
+    summarise(max.gade = max(tox_grade_new)) %>%
+    # mutate(tox_onset_new2 = as.character(tox_onset_new2)) %>%
+    left_join(idkey) %>%
+    mutate(patient.id = as.character(sid_2)) %>%
+    left_join(cycle.dates) %>%
+    drop_na(elapsed.days) %>%
+    ungroup() %>%
+    select(patient.id, max.gade, elapsed.days)
+  
+  return(toxnest)
+}
+```
+
 ```{r handle treatments}
 definePatientTreatments <- function(){
   ICI.meds <- ICI.meds.raw %>%
@@ -257,6 +305,8 @@ definePatientTreatments <- function(){
 ```
 
 
+
+
 ```{r combine for plot}
 formatForPlot <- function(stool.only){
   
@@ -285,6 +335,9 @@ formatForPlot <- function(stool.only){
   
   GA.samples <- getGAdates() %>%
     filter(patient.id %in% numpatkey$patient.id)
+  toxdates <- ToxFormDates() %>%
+    filter(patient.id %in% numpatkey$patient.id) %>%
+    mutate(sampletype = "irAE")
   
   clin.timespan <- getTimespans() %>%
     left_join(numpatkey) %>%
@@ -296,12 +349,20 @@ formatForPlot <- function(stool.only){
     select(patient.id, sequence.id, redcap_event_name, elapsed.days, sampletype) %>%
     bind_rows(blood.days) %>%
     bind_rows(GA.samples) %>%
+    bind_rows(toxdates) %>%
     left_join(numpatkey) %>%
     filter(patient.id != "3051") %>%
     drop_na(patnum)
   
-  plot.inputs <- list(clin.timein.days, clin.timespan, ribbon.in)
-  names(plot.inputs) <- c("samples", "timeline", "ribbon")
+  recist.anno <- recist %>%
+    select(patient.id, RECIST_month3) %>%
+    drop_na(RECIST_month3) %>%
+    left_join(numpatkey) %>%
+    drop_na(patnum)
+  
+  plot.inputs <- list(clin.timein.days, clin.timespan,
+                      ribbon.in, recist.anno)
+  names(plot.inputs) <- c("samples", "timeline", "ribbon", "recist")
   
   return(plot.inputs)
 }
@@ -311,19 +372,30 @@ formatForPlot <- function(stool.only){
 
 
 ```{r}
-# timein <- formatForPlot(stool.only = T)
+# timein <- formatForPlot(stool.only = F)
 # saveRDS(timein, "../data/timeline_stool-patient-only.RDS")
 # saveRDS(timein, "../data/timeline_all-lung-clinic.RDS")
 timein <- readRDS("../data/timeline_all-lung-clinic.RDS")
 
 ggplot() +
-  geom_rect(data = timein$ribbon, aes(ymin = rib.low, ymax = rib.hi, fill = summarise_treatment),
-            alpha = .5, xmin = 0, xmax = 755) +
-  geom_segment(data = timein$timeline, aes(x = 0, xend = max.date, 
-                                           y = patnum, yend = patnum)) +
-  geom_point(data = timein$samples, aes(x = elapsed.days, y = patnum, shape = sampletype)) +
+  geom_rect(data = timein$ribbon,
+            aes(ymin = rib.low, ymax = rib.hi,
+                fill = summarise_treatment),
+            alpha = .5,
+            xmin = 0, xmax = 755) +
+  geom_segment(data = timein$timeline, aes(x = 0,
+                                           xend = max.date, 
+                                           y = patnum,
+                                           yend = patnum)) +
+  geom_point(data = timein$samples, aes(x = elapsed.days,
+                                        y = patnum,
+                                        shape = fct_relevel(sampletype, "stool"),
+                                        color = as.factor(max.gade))) +
+  geom_text(data = timein$recist, aes(x = 760, y = patnum, label = RECIST_month3)) +
   scale_fill_viridis_d(name = "Treatment", breaks = c("chemo", "chemo,io", "io", "targeted"),
                        labels = c("Chemo", "Chemo+IO", "IO", "Targeted")) +
+  scale_color_grey(na.value = "black") +
+  scale_shape(name = "Event type") +
   scale_y_continuous(breaks = timein$ribbon$patnum, labels = timein$ribbon$patient.id) +
   labs(x = "Days", y = "Patient ID") +
   theme_classic()
