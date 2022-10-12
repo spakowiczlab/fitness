@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(broom)
 library(ordinal)
+library(ggrepel)
 ```
 
 # Load data
@@ -176,4 +177,28 @@ tox.base <- modelToxBase()
 write.csv(tox.base, "../data/modelling_toxicity-microbes_baseline-logreg.csv",
           row.names = F)
 ```
+
+
 # Vis
+
+```{r}
+tox.logreg <- read.csv("../data/modelling_toxicity-microbes_longitudinal-ordinal.csv")
+
+tox.logreg %>%
+  drop_na(p.value) %>%
+  mutate(miclab = ifelse(p.value < 0.05,
+                         gsub(".*(\\w__.*)", "\\1",term), NA),
+         collab = str_sub(miclab, 1,1)) %>%
+  ggplot(aes(x = estimate, y = -log(p.value), label = miclab,
+             color = collab)) +
+  geom_point() +
+  geom_text_repel(show.legend = F) +
+  scale_color_viridis_d(breaks = c("f", "g", "s"),
+                        labels = c("family", "genus", "species"),
+                        name = "Taxa level",
+                        na.value = "black") +
+  geom_hline(yintercept = -log(0.05), lty = 2) +
+  theme_bw()
+
+ggsave("../figures/volcano_toxicity-mics_longitudinal.png")
+```

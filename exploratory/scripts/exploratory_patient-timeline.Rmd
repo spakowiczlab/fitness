@@ -339,10 +339,17 @@ formatForPlot <- function(stool.only){
     filter(patient.id %in% numpatkey$patient.id) %>%
     mutate(sampletype = "irAE")
   
+  tmp <- toxdates %>%
+    group_by(patient.id) %>%
+    summarize(max.toxdate = max(elapsed.days)) 
   clin.timespan <- getTimespans() %>%
     left_join(numpatkey) %>%
     filter(patient.id != "3051") %>%
-    drop_na(patnum)
+    drop_na(patnum) %>%
+    left_join(tmp) %>%
+    mutate(max.date = ifelse(max.toxdate > max.date,
+                            max.toxdate, max.date)) %>%
+    select(patient.id, patnum, max.date)
   
   
   clin.timein.days <- mics.days %>%
@@ -372,7 +379,7 @@ formatForPlot <- function(stool.only){
 
 
 ```{r}
-# timein <- formatForPlot(stool.only = F)
+# timein <- formatForPlot(stool.only = T)
 # saveRDS(timein, "../data/timeline_stool-patient-only.RDS")
 # saveRDS(timein, "../data/timeline_all-lung-clinic.RDS")
 timein <- readRDS("../data/timeline_all-lung-clinic.RDS")
