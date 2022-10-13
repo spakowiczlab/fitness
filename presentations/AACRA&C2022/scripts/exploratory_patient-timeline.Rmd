@@ -22,7 +22,14 @@ timein <- readRDS("../../../exploratory/data/timeline_all-lung-clinic.RDS")
 ```{r}
 timein$samples <- 
   timein$samples %>%
-  rename("Toxicity.Grade" = "max.gade")
+  rename("Toxicity.Grade" = "max.gade") 
+
+timein$ribbon <- 
+  timein$ribbon %>%
+  mutate(treatment_dummy = case_when(summarise_treatment == "chemo" ~ "b",
+                                     summarise_treatment == "chemo,io" ~ "c",
+                                     summarise_treatment == "io" ~ "d",
+                                     summarise_treatment == "targeted" ~ "e"))
 
 timein$recist <- 
   timein$recist %>%
@@ -31,13 +38,14 @@ timein$recist <-
                           false = if_else(grepl("SD|PD", RECIST_month3),
                                           true = "NR",
                                           false = RECIST_month3)
-                          )
+                          ),
+         RECIST.dummy = ifelse(RECIST == "NR", "a", "f")
          )
 
 ggplot() +
   geom_rect(data = timein$ribbon,
             aes(ymin = rib.low, ymax = rib.hi,
-                fill = summarise_treatment),
+                fill = treatment_dummy),
             alpha = .5,
             xmin = 0, xmax = 755) +
   geom_segment(data = timein$timeline, 
@@ -60,15 +68,20 @@ ggplot() +
   geom_point(data = timein$recist,
              aes(x = 750,
                  y = patnum,
-                 color = RECIST),
+                 color = RECIST.dummy),
              shape = 15,
              size = 2.4) +
-  scale_color_manual(values = c("red", "dodgerblue"),
-                    name = "Response") +
+  # scale_color_manual(values = c("red", "dodgerblue"),
+  #                   name = "Response") +
   scale_fill_viridis_d(name = "Treatment", 
-                       breaks = c("chemo", "chemo,io", "io", "targeted"),
-                       labels = c("Chemo", "Chemo+IO", "IO", "Targeted")) +
-  
+                       breaks = c("a", "b", "c", "d", "e", "f"),
+                       labels = c("NR", "Chemo", "Chemo+IO", "IO", "Targeted", "R"),
+                       aesthetics = c("color", "fill")
+                       ) +
+    # scale_color_viridis_d(name = "Response", 
+    #                    breaks = c("a", "b", "c", "d", "e", "f"),
+    #                    labels = c("NR", "Chemo", "Chemo+IO", "IO", "Targeted", "R") 
+    #                    ) +
   scale_shape(name = "Event type") +
   scale_y_continuous(breaks = timein$ribbon$patnum, 
                      labels = timein$ribbon$patient.id) +
