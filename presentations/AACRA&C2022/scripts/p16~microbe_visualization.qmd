@@ -9,5 +9,25 @@ library(tidyverse)
 ```
 
 ```{r}
-x <- read_csv("../data")
+x <- read_csv("../data/p16~microbe_p-values.csv")
+
+head(x)
+```
+
+```{r}
+x %>%
+  filter(p.value < 0.05) %>%
+  mutate(microbe.arr = gsub("_", " ", microbe)) %>%
+  mutate(microbe.arr = fct_reorder(microbe.arr, rho)) %>%
+  ggplot(aes(x = rho, 
+             y = microbe.arr)) +
+  geom_bar(aes(fill = direction), 
+           stat = "identity",
+           show.legend = FALSE) +
+  theme_bw() +
+  labs(y = "",
+       x = expression(rho))
+
+ggsave("../figures/p16a-correlation.png",
+       height = 4, width = 4)
 ```
