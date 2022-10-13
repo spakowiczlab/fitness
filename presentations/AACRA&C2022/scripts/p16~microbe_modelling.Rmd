@@ -14,13 +14,15 @@ library(tidyverse)
 
 read in table 
 ```{r}
-nano <- readxl::read_xlsx("/Volumes/spakowicz/fitness/data/raw/nanostring/RoskoPresley_NanostringJune2022.xlsx", sheet = "nSolver output") %>%
+nano <- readxl::read_xlsx("T:/Labs/Spakowicz/fitness/data/derived/RoskoPresley_NanostringJune2022.xlsx", 
+                          sheet = "nSolver output") %>%
   filter(`Probe Name` == "CDKN2A (p16)") %>%
   select(-`Probe Name`, -Annotation, -`Accession #`, -`NS Probe ID`, -`Class Name`, -`Analyte Type`, -`% Samples above Threshold`)
 
-clin_match <- read_csv("presentations/AACRA&C2022/data/clinical_earliest-microbe-samps.csv")
+clin_match <- read_csv("../data/clinical_earliest-microbe-samps.csv", 
+                       show_col_types = FALSE)
 
-mics_temp <- read.table("/Volumes/spakowicz/fitness/data/derived/merged_metaphlan_output.txt", header = TRUE) %>%
+mics_temp <- read.table("T:/Labs/Spakowicz/fitness/data/derived/merged_metaphlan_output.txt", header = TRUE) %>%
   select(-NCBI_tax_id)  %>%
   mutate(clade_name = sub("^.+__", "", clade_name))
   
@@ -36,12 +38,13 @@ colnames(mics) <- mics_temp[, 1]
 
 wide to long 
 ```{r}
-test <- as.data.frame(t(nano)) %>%
+test <- 
+  as.data.frame(t(nano)) %>%
   rename("p16" = V1) %>%
-  mutate(outcome = str_match(rownames(test), '([^_]+)(?:_[^_]+){1}$')[,2]) %>%
+  mutate(outcome = str_match(names(nano), '([^_]+)(?:_[^_]+){1}$')[,2]) %>%
   mutate(patient.id = substr(outcome, 0, 4)) %>%
   select(-outcome) %>%
-  filter(grepl("V1", rownames(test), ignore.case = TRUE))
+  filter(grepl("V1", names(nano), ignore.case = TRUE))
 
 data <- merge(test, clin_match)
 

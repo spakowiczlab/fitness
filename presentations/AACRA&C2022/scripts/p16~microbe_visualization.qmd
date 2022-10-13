@@ -1,0 +1,13 @@
+---
+title: "p16~microbe_visualization"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+x <- read_csv("../data")
+```
