@@ -31,3 +31,22 @@ x %>%
 ggsave("../figures/p16a-correlation.png",
        height = 4, width = 4)
 ```
+
+```{r}
+x %>%
+  filter(p.value < 0.04) %>%
+  mutate(microbe.arr = gsub("_", " ", microbe)) %>%
+  mutate(microbe.arr = fct_reorder(microbe.arr, rho)) %>%
+  ggplot(aes(x = rho, 
+             y = microbe.arr)) +
+  geom_bar(aes(fill = direction), 
+           stat = "identity",
+           show.legend = FALSE) +
+  theme_bw(base_size = 9) +
+  labs(y = "",
+       x = expression(rho)) +
+  scale_fill_viridis_d()
+
+ggsave("../figures/ACS22_p16a-correlation.png",
+       height = 3, width = 3)
+```
