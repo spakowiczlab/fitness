@@ -318,4 +318,10 @@ p2 + theme_bw(base_size = 18)
 ggsave("../figures/wclc22_lollipop_long-fixef_many.png",
        height = 9, width = 10)
 ```
+```{r}
+p2 + theme_bw(base_size = 18)
+
+ggsave("../../presentations/AACRA&C2022/figures/aacrac22-poster_lollipop_long-fixef_many.png",
+       height = 6, width = 8)
+```
 

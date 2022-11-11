@@ -31,7 +31,44 @@ des.res.df %>%
   geom_hline(yintercept = -log(0.05, base = 10), lty = 2) +
   geom_vline(xintercept = c(-10, 10), lty = 2) +
   theme_bw(base_size = 14)
-ggsave("../figures/volcano_deseq_r-v-nr.png",
+
+ggsave("../figures/AACRAC22-talk_volcano_deseq_r-v-nr.png",
        height = 5, width = 12)
+
 ```
 
+```{r}
+des.res.df %>%
+  mutate(taxlab = ifelse(padj < 1e-15, TaxaLevel,NA),
+         textlab = ifelse(is.na(taxlab), NA, gsub(".*\\|\\w__", "",microbe))) %>%
+  ggplot(aes(x = log2FoldChange, y = -log(padj, base = 10), color = taxlab, label = textlab)) +
+  geom_point() +
+  geom_text_repel(show.legend = F) +
+  labs(y = "-log(adjusted p.value)") +
+  scale_color_viridis_d(direction = -1, na.value = "grey", name = "") +
+  geom_hline(yintercept = -log(0.05, base = 10), lty = 2) +
+  geom_vline(xintercept = c(-10, 10), lty = 2) +
+  theme_bw(base_size = 18) +
+  labs(y = "-Log(Adjusted P-value)",
+       x = "Log Fold Change")
+
+ggsave("../figures/AACRAC22-poster_volcano_deseq_r-v-nr.png",
+       height = 11, width = 8)
+```
+
+
+```{r}
+des.res.df %>%
+  mutate(taxlab = ifelse(padj < 1e-15, TaxaLevel, NA),
+         textlab = ifelse(is.na(taxlab), NA, gsub(".*\\|\\w__", "",microbe))) %>%
+  ggplot(aes(x = log2FoldChange, y = -log(padj, base = 10), color = taxlab, label = textlab)) +
+  geom_point() +
+  geom_text_repel(show.legend = F) +
+  labs(y = "-log(adjusted p.value)") +
+  scale_color_viridis_d(direction = -1, na.value = "grey", name = "") +
+  geom_hline(yintercept = -log(0.05, base = 10), lty = 2) +
+  geom_vline(xintercept = c(-10, 10), lty = 2) +
+  theme_bw(base_size = 9)
+ggsave("../figures/ACS22_volcano_deseq_r-v-nr.svg",
+       height = 3, width = 5)
+```

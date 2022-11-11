@@ -50,3 +50,22 @@ x %>%
 ggsave("../figures/ACS22_p16a-correlation.png",
        height = 3, width = 3)
 ```
+
+```{r}
+x %>%
+  filter(p.value < 0.05) %>%
+  mutate(microbe.arr = gsub("_", " ", microbe)) %>%
+  mutate(microbe.arr = fct_reorder(microbe.arr, rho)) %>%
+  ggplot(aes(x = rho, 
+             y = microbe.arr)) +
+  geom_bar(aes(fill = direction), 
+           stat = "identity",
+           show.legend = FALSE) +
+  theme_bw(base_size = 16) +
+  labs(y = "",
+       x = expression(rho)) +
+  scale_fill_brewer(palette = "Set1")
+
+ggsave("../figures/AACRAC22-poster_p16a-correlation.png",
+       height = 4, width = 6, dpi = 600)
+```
