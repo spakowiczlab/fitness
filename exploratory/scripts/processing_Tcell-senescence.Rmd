@@ -17,7 +17,7 @@ library(tmesig)
 ```{r}
 clin <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/clinical-OC-matched_resolved.csv",
                  stringsAsFactors = F)
-nanostring <- read_excel("T:/Labs/Spakowicz/fitness/data/raw/nanostring/RoskoPresley_NanostringJune2022.xlsx", sheet = 3)
+nanostring <- read_excel("/Volumes/spakowicz/fitness/data/raw/nanostring/RoskoPresley_NanostringJune2022.xlsx", sheet = 3)
 ```
 
 # Calculate T cell senescence

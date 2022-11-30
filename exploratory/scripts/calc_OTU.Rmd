@@ -1,0 +1,42 @@
+---
+title: "fitness OTU calc"
+author: "Caroline Wheeler"
+date: '2022-11-30'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+```{r}
+taxa <- read.table("/Volumes/spakowicz/fitness/data/derived/merged_metaphlan_output.txt",
+                     header = T, stringsAsFactors = F)
+```
+
+samples wide to long 
+```{r}
+taxa <- gather(taxa, sample, relAbun, FF05466751:FF05464119, factor_key=TRUE)
+```
+
+serparate taxonomy into taxonomic levels 
+```{r}
+taxa <- taxa %>%
+  separate(clade_name, c("Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "Species"), '\\|') %>%
+  filter(!is.na(Species),
+         relAbun != 0)
+
+otu <- taxa %>% 
+  select(sample, Species) %>%
+  group_by(sample) %>%
+  summarise(count = n())
+```
+
+save csv
+```{r}
+write.csv(otu, "../data/fitness_speciesCounts.csv")
+```
+
+
