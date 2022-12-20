@@ -198,3 +198,47 @@ scatterin %>%
   theme_bw()
 ggsave("../figures/scatterplot_Tcell-blessed.png")
 ```
+
+# IADL plots
+
+```{r get slope and intercept info}
+test <- lmer(formula = as.formula(paste0("iadl_score",
+                                         " ~ ",
+                                         "LAG3",
+                                         " + elapsed.days +",                                        " (1|patient.id)")),
+             data = modelin)
+summary(test)
+
+test <- lmer(formula = as.formula(paste0("iadl_score",
+                                         " ~ ",
+                                         "CD8A",
+                                         " + elapsed.days +",                                        " (1|patient.id)")),
+             data = modelin)
+summary(test)
+
+```
+```{r scatter IADL sig}
+iadl.dat <- formatForCorrLong() %>%
+  select(patient.id, redcap_event_name, elapsed.days, iadl_score, 
+         CD8A, LAG3) %>%
+  pivot_longer(c("CD8A", "LAG3"), names_to = "gene", values_to = "gene.exp")
+
+iadl.dat %>%
+  filter(gene == "LAG3") %>%
+  ggplot(aes(x = iadl_score, y = gene.exp)) +
+  geom_point() +
+  geom_abline(slope = -0.192921, intercept = -0.159649) +
+  labs(y = "LAG3") +
+  theme_bw()
+ggsave("../figures/scatter_iadl-lag3.png")
+
+iadl.dat %>%
+  filter(gene == "CD8A") %>%
+  ggplot(aes(x = iadl_score, y = gene.exp)) +
+  geom_point() +
+  geom_abline(slope = -0.1881678, intercept = -0.1030304) +
+  labs(y = "CD8A") +
+  theme_bw()
+ggsave("../figures/scatter_iadl-cd8a.png")
+
+```
