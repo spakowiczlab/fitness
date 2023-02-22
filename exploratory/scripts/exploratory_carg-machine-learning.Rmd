@@ -86,9 +86,30 @@ baseline.vals %>%
   mutate(high.carg = ifelse(carg_score > 7, 1,0)) %>%
   ggplot() +
   geom_mosaic(aes(x = product(high.carg, high.tox), fill = high.tox)) +
-  scale_fill_brewer(palette = "Set1", direction = -1)
+  scale_fill_brewer(palette = "Set1", direction = -1,
+                    name = "Toxicity \u2265 Grade 3") +
+  labs(x = "Toxicity \u2265 Grade 3", y = "CARG \u2265 8") +
+  theme_bw()
   
 ggsave("../figures/mosaic_carg-irae.png")
+```
+
+```{r}
+baseline.vals %>%
+  group_by(carg_score, high.tox) %>%
+  tally() %>%
+  mutate(high.tox = ifelse(high.tox == 0, "No", "Yes")) %>%
+  pivot_wider(names_from = "high.tox",
+              values_from = "n",
+              values_fill = 0) %>%
+  pivot_longer(-carg_score, names_to = "high.tox",
+               values_to = "n") %>%
+  ggplot(aes(x = carg_score,y = n, fill = high.tox)) +
+  geom_col(position = position_dodge()) +
+  theme_bw() +
+  labs(x = "CARG", y = "") +
+  scale_fill_brewer(palette = "Set1", name = "Toxicity\n\u2265 Grade 3")
+ggsave("../figures/barplot_carg-tox.png")
 ```
 
 # ML 
