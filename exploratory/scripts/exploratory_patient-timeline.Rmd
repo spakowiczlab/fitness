@@ -27,7 +27,7 @@ paths.controlled <- "T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/"
 
 ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
 
-clin.withdate <- read.csv(file.path(paths.controlled, "CoRR5512FITNESSCalcu_DATA_2022-10-04_1152.csv"), stringsAsFactors = F)
+clin.withdate <- read.csv(file.path(paths.controlled, "CoRR5512FITNESSCalcu_DATA_2023-02-22_1052.csv"), stringsAsFactors = F)
 colnames(clin.withdate)[1] <- "id"
 
 key.microbe <- read.csv(file.path(paths.controlled, "key_fitness-microbe-clin.csv"))
@@ -397,11 +397,12 @@ ggplot() +
   geom_point(data = timein$samples, aes(x = elapsed.days,
                                         y = patnum,
                                         shape = fct_relevel(sampletype, "stool"),
-                                        color = as.factor(max.gade))) +
-  geom_text(data = timein$recist, aes(x = 760, y = patnum, label = RECIST_month3)) +
+                                        color = as.factor(max.gade)),
+             stroke = 1.25) +
+  geom_text(data = timein$recist, aes(x = 500, y = patnum, label = RECIST_month3)) +
   scale_fill_viridis_d(name = "Treatment", breaks = c("chemo", "chemo,io", "io", "targeted"),
                        labels = c("Chemo", "Chemo+IO", "IO", "Targeted")) +
-  scale_color_grey(na.value = "black") +
+  scale_color_grey(na.value = "black", name = "irAE Toxicity") +
   scale_shape(name = "Event type") +
   scale_y_continuous(breaks = timein$ribbon$patnum, labels = timein$ribbon$patient.id) +
   labs(x = "Days", y = "Patient ID") +
