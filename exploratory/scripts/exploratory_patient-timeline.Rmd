@@ -379,7 +379,7 @@ formatForPlot <- function(stool.only){
 
 
 ```{r}
-# timein <- formatForPlot(stool.only = T)
+# timein <- formatForPlot(stool.only = F)
 # saveRDS(timein, "../data/timeline_stool-patient-only.RDS")
 # saveRDS(timein, "../data/timeline_all-lung-clinic.RDS")
 timein <- readRDS("../data/timeline_all-lung-clinic.RDS")
