@@ -1,0 +1,134 @@
+---
+title: "CARG machine learning"
+output: html_document
+date: '2023-02-13'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(ggmosaic)
+```
+
+# Load data
+
+```{r}
+paths.tdrive <- "T:/Labs/Spakowicz/fitness"
+paths.controlled <- "T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/"
+
+clin.withdate <- read.csv(file.path(paths.controlled, "CoRR5512FITNESSCalcu_DATA_2022-10-04_1152.csv"), stringsAsFactors = F)
+colnames(clin.withdate)[1] <- "id"
+
+key.microbe <- read.csv(file.path(paths.controlled, "key_fitness-microbe-clin.csv"))
+
+```
+
+# Format
+
+```{r}
+idkey <- clin.withdate %>%
+    select(id, sid_2) %>%
+    drop_na()
+```
+
+```{r}
+toxnest <- clin.withdate %>%
+  filter(redcap_repeat_instrument == "adverse_events_and_toxicities_new" &
+           grepl("arm_2", redcap_event_name)) %>%
+  select(id, tox_grade_new, redcap_event_name) %>%
+  drop_na(tox_grade_new) %>%
+  group_by(id, redcap_event_name) %>%
+  summarise(max.gade = max(tox_grade_new)) %>%
+  # mutate(tox_onset_new2 = as.character(tox_onset_new2)) %>%
+  left_join(idkey) %>%
+  mutate(patient.id = as.character(sid_2))
+
+tox.maxgrade <- toxnest %>%
+  group_by(id, patient.id) %>%
+  summarise(maxgrade = max(max.gade)) %>%
+  mutate(high.tox = ifelse(maxgrade >= 3, 1,0))
+
+```
+
+```{r collect baseline inputs}
+baseline.vals <- clin.withdate %>% 
+  filter(!is.na(carg_score) & grepl("arm_2", redcap_event_name)) %>%
+  select(id, contains("carg")) %>%
+  select(-contains("complete"), -contains("timestamp"))
+
+baseline.vals <- baseline.vals %>%
+  left_join(tox.maxgrade)
+```
+
+# Mosaic of Outcomes
+
+```{r, eval = F}
+png("../figures/histogram_carg-score.png")
+hist(baseline.vals$carg_score)
+dev.off()
+```
+
+```{r, eval = F}
+baseline.vals %>%
+  drop_na(carg_score) %>%
+  mutate(high.carg = ifelse(carg_score > 7, 1,0)) %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(high.carg, high.tox), fill = high.tox)) +
+  scale_fill_brewer(palette = "Set1", direction = -1,
+                    name = "Toxicity \u2265 Grade 3") +
+  labs(x = "Toxicity \u2265 Grade 3", y = "CARG \u2265 8") +
+  theme_bw()
+  
+ggsave("../figures/mosaic_carg-irae.png")
+```
+
+```{r}
+baseline.vals %>%
+  group_by(carg_score, high.tox) %>%
+  tally() %>%
+  mutate(high.tox = ifelse(high.tox == 0, "No", "Yes")) %>%
+  pivot_wider(names_from = "high.tox",
+              values_from = "n",
+              values_fill = 0) %>%
+  pivot_longer(-carg_score, names_to = "high.tox",
+               values_to = "n") %>%
+  ggplot(aes(x = carg_score,y = n, fill = high.tox)) +
+  geom_col(position = position_dodge()) +
+  theme_bw() +
+  labs(x = "CARG", y = "") +
+  scale_fill_brewer(palette = "Set1", 
+                    name = "Toxicity\n\u2265 Grade 3",
+                    direction = -1) +
+  theme(text = element_text(size = 10))
+ggsave("../figures/barplot_carg-tox.pdf", width = 7, height = 5)
+```
+
+# Testing differences
+
+```{r}
+baseline.vals %>%
+  mutate(high.tox = ifelse(high.tox == 0, "No", "Yes")) %>%
+  ggplot(aes(x = high.tox, y = carg_score, fill = high.tox)) +
+  geom_boxplot(show.legend = F) +
+  geom_jitter(show.legend = F) +
+  labs(x = "Toxicity \u2265 Grade 3", y = "CARG") +
+  scale_fill_brewer(palette = "Set1", 
+                    direction = -1) +
+  theme_bw() +
+  theme(text = element_text(size = 8))
+ggsave("../figures/boxplot_carg-irAE.pdf", height = 2.5, width = 2.5)
+```
+
+```{r}
+tmp <- baseline.vals %>%
+  filter(high.tox ==0)
+shapiro.test(tmp$carg_score)
+tmp <- baseline.vals %>%
+  filter(high.tox ==1)
+shapiro.test(tmp$carg_score)
+
+t.test(carg_score ~ high.tox, data = baseline.vals)
+```
+
+
