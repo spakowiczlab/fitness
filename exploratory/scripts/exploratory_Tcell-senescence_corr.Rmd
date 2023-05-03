@@ -50,8 +50,10 @@ formatForCorr <- function(){
 TcellGAcorrs <- function(){
   modin <- formatForCorr()
   
-  corr.res <- lapply(GA.score, function(x) cor.test(modin[[x]], modin[["Tcell.Senescence"]], 
-                                                    method = "spearman") %>%
+  corr.res <- lapply(GA.score, function(x) 
+    cor.test(modin[[x]],
+             modin[["Tcell.Senescence"]], 
+             method = "spearman") %>%
                        tidy() %>%
                        mutate(GeriatricAssessment = x)) %>%
     bind_rows()
@@ -144,16 +146,17 @@ formatForCorrLong <- function(){
 
 long_mods <-function(outcome, mics.vec){
   
-  mods <- lapply(mics.vec, function(x) try(summary(lmer(formula = as.formula(paste0(outcome,
-                                                                                    " ~ ",
-                                                                                    x,
-                                                                                    " + elapsed.days +",
-                                                                                    " (1|patient.id)")),
-                                                        data = modelin))$coefficients %>%
-                                             as.data.frame() %>%
-                                             rownames_to_column(var = "Gene") %>%
-                                             filter(Gene == x) %>%
-                                             mutate(score = outcome)))
+  mods <- lapply(mics.vec, function(x) 
+    try(summary(lmer(formula = as.formula(paste0(outcome,
+                                                 " ~ ",
+                                                 x,
+                                                 " + elapsed.days +",
+                                                 " (1|patient.id)")),
+                     data = modelin))$coefficients %>%
+          as.data.frame() %>%
+          rownames_to_column(var = "Gene") %>%
+          filter(Gene == x) %>%
+          mutate(score = outcome)))
   mods.clean <- bind_rows(mods) %>%
     arrange(`Pr(>|t|)`)
   return(mods.clean)
@@ -217,6 +220,7 @@ test <- lmer(formula = as.formula(paste0("iadl_score",
 summary(test)
 
 ```
+
 ```{r scatter IADL sig}
 iadl.dat <- formatForCorrLong() %>%
   select(patient.id, redcap_event_name, elapsed.days, iadl_score, 
