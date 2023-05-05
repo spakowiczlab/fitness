@@ -208,14 +208,16 @@ ggsave("../figures/scatterplot_Tcell-blessed.png")
 test <- lmer(formula = as.formula(paste0("iadl_score",
                                          " ~ ",
                                          "LAG3",
-                                         " + elapsed.days +",                                        " (1|patient.id)")),
+                                         " + elapsed.days +",
+                                         " (1|patient.id)")),
              data = modelin)
 summary(test)
 
 test <- lmer(formula = as.formula(paste0("iadl_score",
                                          " ~ ",
                                          "CD8A",
-                                         " + elapsed.days +",                                        " (1|patient.id)")),
+                                         " + elapsed.days +",
+                                         " (1|patient.id)")),
              data = modelin)
 summary(test)
 
@@ -245,4 +247,49 @@ iadl.dat %>%
   theme_bw()
 ggsave("../figures/scatter_iadl-cd8a.png")
 
+
+iadl.dat %>%
+  ggplot(aes(x = iadl_score, y = gene.exp)) +
+  facet_wrap(vars(gene)) +
+  geom_point() +
+  geom_abline(aes(slope = -0.1881678, intercept = -0.1030304),
+              data = subset(iadl.dat, gene == "CD8A")) +
+  geom_abline(aes(slope = -0.192921, intercept = -0.159649), 
+              data = subset(iadl.dat, gene == "LAG3")) +
+  labs(y = "Gene expression", x = "IADL") +
+  theme_bw()
+ggsave("../figures/scatterplot_iadl-cd81-lag3.png")
+```
+
+```{r iadl unscaled vis}
+eldays <- getVisitDays()
+
+iadl.dat.unscaled <- clin %>%
+  select(c("patient.id", "redcap_event_name", GA.score)) %>%
+  mutate(visit = case_when(
+    redcap_event_name == "study_visit_1_arm_2" ~ "SV1",
+    redcap_event_name == "study_visit_2_arm_2" ~ "SV2",
+    redcap_event_name == "study_visit_3_arm_2" ~ "SV3",
+    redcap_event_name == "study_visit_4_arm_2" ~ "SV4")) %>%
+  inner_join(tsen) %>%
+  left_join(nano) %>%
+  left_join(eldays) %>%
+  mutate(patient.id = as.character(patient.id)) %>%
+  select(patient.id, redcap_event_name, elapsed.days, iadl_score, 
+         CD8A, LAG3) %>%
+  pivot_longer(c("CD8A", "LAG3"), names_to = "gene", values_to = "gene.exp")
+
+
+iadl.dat.unscaled %>%
+  ggplot(aes(x = iadl_score, y = gene.exp, group = gene)) +
+  facet_wrap(vars(gene), scales = "free_y") +
+  geom_point() +
+  stat_smooth(method = "lm", color = "black") +
+  # geom_abline(aes(slope = -0.1881678, intercept = -0.1030304),
+  #             data = subset(iadl.dat, gene == "CD8A")) +
+  # geom_abline(aes(slope = -0.192921, intercept = -0.159649), 
+  #             data = subset(iadl.dat, gene == "LAG3")) +
+  labs(y = "Gene expression", x = "IADL") +
+  theme_bw()
+ggsave("../figures/scatterplot_iadl-cd81-lag3_unscaled.png")
 ```
