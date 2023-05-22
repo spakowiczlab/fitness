@@ -12,6 +12,7 @@ library(broom)
 library(glmm)
 library(lme4)
 library(lmerTest)
+library(ggrepel)
 ```
 
 # Load data
@@ -205,21 +206,21 @@ ggsave("../figures/scatterplot_Tcell-blessed.png")
 # IADL plots
 
 ```{r get slope and intercept info}
-test <- lmer(formula = as.formula(paste0("iadl_score",
+lag3.mod <- lmer(formula = as.formula(paste0("iadl_score",
                                          " ~ ",
                                          "LAG3",
                                          " + elapsed.days +",
                                          " (1|patient.id)")),
              data = modelin)
-summary(test)
+summary(lag3.mod)
 
-test <- lmer(formula = as.formula(paste0("iadl_score",
+cd8a.mod <- lmer(formula = as.formula(paste0("iadl_score",
                                          " ~ ",
                                          "CD8A",
                                          " + elapsed.days +",
                                          " (1|patient.id)")),
              data = modelin)
-summary(test)
+summary(cd8a.mod)
 
 ```
 
@@ -292,4 +293,37 @@ iadl.dat.unscaled %>%
   labs(y = "Gene expression", x = "IADL") +
   theme_bw()
 ggsave("../figures/scatterplot_iadl-cd81-lag3_unscaled.png")
+```
+
+
+```{r iadl change boxplot}
+# Only 2 patients have iadl scores that change and the changes are not drastic, I am going to stop here with this idea.
+iadl.changekey <- clin %>%
+  select(c("patient.id", "iadl_score")) %>%
+  drop_na(iadl_score) %>%
+  distinct() %>%
+  add_count(patient.id)
+  pivot_wider(key = )
+```
+
+```{r longitudinal model forest plot}
+mod.res <- bind_rows(as.data.frame(summary(cd8a.mod)$coefficients),
+          as.data.frame(summary(lag3.mod)$coefficients)) %>%
+  rownames_to_column(var = "gene") %>%
+  filter(gene %in% c("LAG3", "CD8A"))
+
+mod.res %>%
+  ggplot(aes(x = Estimate, y = "hold")) +
+  facet_wrap(vars(gene), ncol = 1, strip.position = "left") +
+  geom_point() +
+  geom_segment(aes(x = Estimate - `Std. Error`,
+                   xend = Estimate + `Std. Error`, y = "hold",
+                   yend = "hold")) +
+  geom_text_repel(aes(label = paste0("p.value = ", str_sub(`Pr(>|t|)`,1,4)))) +
+  geom_vline(xintercept = 0, lty = 2) +
+  labs(y = "", x = "Estimated slope") +
+  theme_bw() +
+  theme(axis.text.y = element_blank(),
+        axis.ticks.y = element_blank())
+ggsave("../figures/forestplot_iadl-genes.png")
 ```
