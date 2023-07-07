@@ -118,7 +118,7 @@ baseline.vals %>%
                     direction = -1) +
   theme_bw() +
   theme(text = element_text(size = 8))
-ggsave("../figures/boxplot_carg-irAE.pdf", height = 2.5, width = 2.5)
+ggsave("../figures/boxplot_carg-irAE.png", height = 2.5, width = 2.5)
 ```
 
 ```{r}
