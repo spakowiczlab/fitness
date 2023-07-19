@@ -13,12 +13,13 @@ library(glmm)
 library(lme4)
 library(lmerTest)
 library(ggrepel)
+source("00-paths.R")
 ```
 
 # Load data
 
 ```{r}
-clin <- read.csv("T:/Labs/Spakowicz/fitness/data/derived/clinical-OC-matched_resolved_limited.csv",
+clin <- read.csv(paste0(paths$t.drive, "/data/derived/clinical-OC-matched_resolved_limited.csv"),
                  stringsAsFactors = F)
 clin.withdate <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/CoRR5512FITNESSCalcu_DATA_2022-10-04_1152.csv", stringsAsFactors = F)
 colnames(clin.withdate)[1] <- "id"
@@ -226,7 +227,8 @@ mod.res %>%
   geom_vline(xintercept = 0, lty = 2) +
   labs(y = "", x = "Estimated slope") +
   theme_bw() +
-  theme(axis.text.y = element_blank(),
+  theme(text = element_text(size = 9),
+        axis.text.y = element_blank(),
         axis.ticks.y = element_blank())
-ggsave("../figures/forestplot_iadl-genes.png")
+ggsave("../figures/forestplot_iadl-genes.png", height =3, width = 3)
 ```

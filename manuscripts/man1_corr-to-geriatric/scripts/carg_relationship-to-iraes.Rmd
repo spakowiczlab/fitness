@@ -10,18 +10,16 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(ggmosaic)
 library(ggbeeswarm)
+source("00-paths.R")
 ```
 
 # Load data
 
 ```{r}
-paths.tdrive <- "T:/Labs/Spakowicz/fitness"
-paths.controlled <- "T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/"
-
-clin.withdate <- read.csv(file.path(paths.controlled, "CoRR5512FITNESSCalcu_DATA_2022-10-04_1152.csv"), stringsAsFactors = F)
+clin.withdate <- read.csv(paste0(paths$controlled, "/CoRR5512FITNESSCalcu_DATA_2022-10-04_1152.csv"), stringsAsFactors = F)
 colnames(clin.withdate)[1] <- "id"
 
-key.microbe <- read.csv(file.path(paths.controlled, "key_fitness-microbe-clin.csv"))
+key.microbe <- read.csv(file.path(paths$controlled, "key_fitness-microbe-clin.csv"))
 
 ```
 
@@ -97,12 +95,13 @@ baseline.vals %>%
   ggplot(aes(x = carg_score,y = n, fill = high.tox)) +
   geom_col(position = position_dodge()) +
   theme_bw() +
-  labs(x = "CARG", y = "") +
+  labs(x = "CARG", y = "Number of patients") +
   scale_fill_brewer(palette = "Set1", 
                     name = "Toxicity\n\u2265 Grade 3",
                     direction = -1) +
+  scale_x_continuous(breaks = 2:12) +
   theme(text = element_text(size = 10))
-ggsave("../figures/barplot_carg-tox.pdf", width = 7, height = 5)
+ggsave("../figures/barplot_carg-tox.png", width = 7, height = 5)
 ```
 
 # Testing differences

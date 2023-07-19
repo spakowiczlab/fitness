@@ -29,7 +29,7 @@ source("00-paths.R")
 
 ```{r}
 
-clin <- read.csv(file.path(paths$t.drive, "data", "clinical-OC-matched_resolved_limited.csv"), stringsAsFactors = F)
+clin <- read.csv(file.path(paths$t.drive, "data", "derived", "clinical-OC-matched_resolved_limited.csv"), stringsAsFactors = F)
 clin.withdate <- read.csv(file.path(paths$controlled, "clinical-OC-matched_resolved.csv"), stringsAsFactors = F)
 
 # studcy <- read_excel("../data/cycle_study-visit-tracker_v3.xlsx")
@@ -83,7 +83,7 @@ ggsave("../figures/timeline_promis.png")
 ## Get + format modelling data
 
 ```{r}
-mics <- read.table("T:/Labs/Spakowicz/fitness/data/merged_metaphlan_output.txt", sep = "\t", header = T, stringsAsFactors = F)
+mics <- read.table(file.path(paths$t.drive, "data","derived","merged_metaphlan_output.txt"), sep = "\t", header = T, stringsAsFactors = F)
 
 mics.form <- mics %>%
   select(-NCBI_tax_id) %>%
