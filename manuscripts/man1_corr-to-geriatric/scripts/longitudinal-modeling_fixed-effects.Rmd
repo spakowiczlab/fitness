@@ -95,7 +95,8 @@ long_mods <-function(outcome, mics.vec){
                                              rownames_to_column(var = "microbe") %>%
                                              filter(microbe == x)))
   mods.clean <- bind_rows(mods) %>%
-    arrange(`Pr(>|t|)`)
+    arrange(`Pr(>|t|)`) %>%
+    mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr"))
   return(mods.clean)
 }
 ```
@@ -107,6 +108,17 @@ sppb.mods <- long_mods("sppb_score", mic.names)
 promis.mods <- long_mods("promis_score", mic.names)
 iadl.mods <- long_mods("iadl_score", mic.names)
 timedupgo <- long_mods("tug", mic.names)
+
+sppb.mods.lab <- sppb.mods %>%
+  mutate(GA = "SPPB")
+promis.mods.lab <- promis.mods %>%
+  mutate(GA = "PROMIS")
+iadl.mods.lab <- iadl.mods %>%
+  mutate(GA = "IADL")
+timedupgo.mods.lab <- timedupgo %>%
+  mutate(GA = "TUG")
+
+alltests <- bind_rows(sppb.mods.lab, promis.mods.lab, iadl.mods.lab, timedupgo.mods.lab)
 ```
 
 ```{r}
@@ -114,4 +126,6 @@ write.csv(sppb.mods, "../data/model_long-treat_sppb.csv", row.names = F)
 write.csv(promis.mods, "../data/model_long-treat_promis.csv", row.names = F)
 write.csv(iadl.mods, "../data/model_long-treat_iadl.csv", row.names = F)
 write.csv(timedupgo, "../data/model_long-treat_timed-up-go.csv", row.names = F)
+
+write.csv(alltests, "../tables/S1_fixed-effects-models.csv", row.names = F)
 ```

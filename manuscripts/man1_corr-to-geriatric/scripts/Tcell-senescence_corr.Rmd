@@ -186,6 +186,7 @@ GA.long <- lapply(GA.score[2:5], function(x) long_mods(x, c("Tcell.Senescence", 
   mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr"))
 
 write.csv(GA.long, "../data/longitudinal-modeling_nanostring.csv", row.names = F)
+write.csv(GA.long, "../tables/S2_longitudinal-modeling_nanostring.csv", row.names = F)
 ```
 
 # IADL plots
