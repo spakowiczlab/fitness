@@ -47,8 +47,20 @@ survdat <- clin.withdate %>%
          days = as.numeric(enddat - enrollment_date)) %>%
   select(id, life_status, days)
 
-# test <- survdat %>%
-#   filter(!is.na(date_of_death) & !is.na(last_followup))
+test <- clin.withdate %>%
+  select(id,enrollment_date, life_status, date_of_death, last_followup) %>%
+  drop_na(life_status) %>%
+  filter(enrollment_date != "") %>%
+  # Mutate block for collecting dates
+  mutate(date_of_death = ifelse(date_of_death == "", NA, date_of_death),
+         last_followup = ifelse(last_followup == "", NA, last_followup),
+         date_of_death = as.Date(date_of_death),
+         last_followup = as.Date(last_followup)) %>%
+  filter(!is.na(date_of_death) & !is.na(last_followup)) %>%
+  mutate(early_death = date_of_death < last_followup)
+
+test %>%
+  select(id, early_death)
 ```
 
 ```{r extract other variables}
