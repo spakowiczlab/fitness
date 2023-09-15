@@ -1,0 +1,309 @@
+---
+title: "FDAI calculation"
+output: html_document
+date: "2023-09-15"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+
+```
+
+# Load data
+
+```{r}
+coRR <- read.csv("T:/Labs/Presley/FITNESS-lung/Microbiome- Rebecca/CoRR5512FITNESSCalcu_DATA_2023-09-15_1235.csv", stringsAsFactors = F)
+
+baseline.vals <- coRR %>%
+  filter(enrollment_date != "")
+```
+
+# Most CARG GA variables
+
+## Unnested
+
+```{r}
+ga.unnest.simplevars <- c("ga_marital", "ga_telephone", "ga_walking_distance", "ga_shopping", "ga_preparemeals", "ga_housework", "ga_medicines", "ga_money"
+)
+
+ga.unnest.simp <- baseline.vals %>%
+  select(c("id", ga.unnest.simplevars)) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "selection") %>%
+  mutate(FDAI.points = case_when(
+    varname == "ga_marital" & selection == 1 ~ 0,
+    varname != "ga_marital" & selection == 2 ~ 0,),
+    FDAI.points = ifelse(is.na(FDAI.points) & !is.na(selection)
+                         , 1, FDAI.points))
+
+ga.unnest.radio <- c("ga_groceries", "ga_stairs2", "ga_kneeling", "ga_blocks", "ga_block", "ga_dressing")
+
+ga.unnest.radio.df <- baseline.vals %>%
+  select(c("id", ga.unnest.radio)) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "selection") %>%
+  mutate(FDAI.points = ifelse(selection == 100, 
+                              0,
+                              ifelse(!is.na(selection), 1, NA)))
+
+
+ga.unnest.othspec <- c("ga_current_health", "ga_falls", "ga_medication")
+
+ga.curhealth <- baseline.vals %>%
+  select(id, ga_current_health) %>%
+  mutate(FDAI.points = 
+           case_when(
+             ga_current_health %in% c(90,100) ~ 0,
+             ga_current_health %in% c(80) ~ 1,
+             ga_current_health %in% c(30,40,50,60,70) ~ 2)
+         ) %>%
+  mutate(varname = "ga_current_health") %>%
+  rename("selection" = "ga_current_health")
+
+ga.falls <- baseline.vals %>%
+  select(id, "ga_falls") %>%
+  mutate(FDAI.points = ifelse(ga_falls < 2, 0,1)
+         ) %>%
+  mutate(varname = "ga_falls") %>%
+  rename("selection" = "ga_falls")
+
+ga.polypharm <- baseline.vals %>%
+  select(id, "ga_medication") %>%
+  mutate(FDAI.points = ifelse(ga_medication < 5, 0,1)
+         ) %>%
+  mutate(varname = "ga_medication") %>%
+  rename("selection" = "ga_medication")
+```
+
+## Nested comorbs
+
+```{r}
+comorb.nestvars <- c("ga_othercancers
+ga_othercancerinterfere
+ga_arthritis
+ga_arthritis_interfere
+ga_glaucoma
+ga_glaucoma_interfere
+ga_emphysema
+ga_ephysemainterfere
+ga_blood_pressure
+ga_bloodpressure_interfere
+ga_heart_trouble
+ga_hearttrouble_interfere
+ga_circluation
+circulation_interfere
+ga_diabetes
+diabetes_interfere
+ga_stomachdisorders
+stomach_interfere
+ga_osteoporosis
+osteoporosis_interfere
+ga_liver_disease
+liverdisease_interfere
+ga_kidney_disease
+kidneydisease_interfere
+ga_stroke
+stroke_interfere
+ga_depression
+depression_interfere
+ga_eyesight
+eyesight_interfere
+ga_hearing
+hearing_interfere")
+comorb.nestvars <- unlist(str_split(comorb.nestvars, "\n"))
+comorb.presence.vars <-comorb.nestvars[!grepl("interfere", comorb.nestvars)]
+comorb.interfere.vars <- comorb.nestvars[grepl("interfere", comorb.nestvars)]
+```
+
+```{r}
+ga.comorb.pres <- baseline.vals %>%
+  select(c("id", comorb.presence.vars)) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "selection") %>%
+  mutate(FDAI.points = ifelse(selection == 1,1,0),
+         FDAI.points = ifelse(varname == "ga_hearing" & selection > 2, 1, FDAI.points))
+
+ga.comorb.int <-  baseline.vals %>%
+  select(c("id", comorb.interfere.vars)) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "selection") %>%
+  mutate(FDAI.points = ifelse(selection == 3,1,0))
+```
+
+# Psychosocial vars
+
+## MHI
+
+```{r fix scales}
+mhi.vars <- c("ga_depressed","ga_interesting_things","ga_loved","ga_nervous","control_of_emotions","ga_highstrung","ga_calm","ga_emotionallystable","ga_downhearted","ga_impatient","ga_moody","ga_cheerful","ga_lowspirits","ga_happyperson","ga_lookforward","ga_downindumps","ga_anxious")
+
+hadsconv <- as.data.frame(cbind(selection = c(0,20,40,60,80,100),
+                                mhival = 1:6))
+
+mhi.input.df <- baseline.vals %>%
+  select(c("id", mhi.vars)) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "selection") %>%
+  left_join(hadsconv)
+```
+
+```{r}
+mhi.anxvars <- c("ga_impatient",
+"ga_nervous",
+"ga_moody",
+"ga_anxious",
+"ga_highstrung"
+)
+mhi.depvars <- c("ga_depressed",
+"ga_downhearted",
+"ga_lowspirits",
+"ga_downindumps",
+"ga_cheerful",
+"ga_happyperson",
+"ga_lookforward"
+)
+
+mhi.score.df <- mhi.input.df %>%
+  group_by(id) %>%
+  summarise(mhi_score = mean(mhival))
+
+mhi.anx.df <- mhi.input.df %>%
+  filter(varname %in% mhi.anxvars) %>%
+  group_by(id) %>%
+  summarise(mhi_score_anxiety = mean(mhival))
+
+mhi.dep.df <- mhi.input.df %>%
+  filter(varname %in% mhi.depvars) %>%
+  group_by(id) %>%
+  summarise(mhi_score_depression = mean(mhival))
+
+mhi.allscores <- mhi.score.df %>%
+  left_join(mhi.anx.df) %>%
+  left_join(mhi.dep.df)
+
+write.csv(mhi.allscores, "../data/mhi_calculated-scores.csv", row.names = F)
+```
+
+```{r placeholder for converting MHI values to FDAI points}
+
+```
+
+## other social
+
+```{r}
+ga.socials <- c("ga_socialinterfere",
+"ga_usualactivity",
+"ga_sociallimitations"
+)
+
+ga.socials.df <-  baseline.vals %>%
+  select(c("id", ga.socials)) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "selection") %>%
+  mutate(FDAI.points = case_when(selection %in% c(100,75) ~ 0,
+                                  selection %in% c(25,50) ~ 1,
+                                  selection == 0 ~ 2)
+         )
+```
+
+```{r}
+ss.vars <- c("ss_confined",
+"ss_transportation",
+"ss_mealprep",
+"ss_chores"
+)
+
+ss.df <-  baseline.vals %>%
+  select(c("id", ss.vars)) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "selection") %>%
+  mutate(FDAI.points = case_when(selection %in% c(4,5) ~ 0,
+                                  selection %in% c(2,3) ~ 1,
+                                  selection == 1 ~ 2)
+         )
+```
+
+# Other GAs
+
+```{r}
+othga.vars <- c("ecog", "tug", "blessed_score")
+
+othga.df <- baseline.vals %>%
+  select(c("id", othga.vars)) %>%
+  mutate(ecog = case_when(ecog == 0 ~0,
+                          ecog == 1 ~ 1,
+                          ecog > 1 ~ 2),
+         blessed_score = case_when(blessed_score < 10 ~ 0,
+                                   blessed_score >= 10 ~ 1),
+         tug = ifelse(tug < 13, 0,1)) %>%
+  pivot_longer(-id, names_to = "varname",
+               values_to = "FDAI.points") 
+
+```
+
+# Lab results
+
+```{r}
+labvars <- c(
+  "carg_creatinine",
+  # "creatinine", 
+  "hemaglobin",
+  "albumin",
+  "alt",
+  "ast"
+)
+remove99 = function(x){
+  tmp <- ifelse(x == -99, NA, x)
+  return(tmp)
+}
+
+labpoints.df <-  baseline.vals %>%
+  select(c("id", "sex", labvars)) %>%
+  mutate(across(labvars, .fns = remove99)) %>%
+  mutate(carg_creatinine = case_when(carg_creatinine == 3 ~1,
+                          carg_creatinine == 0 ~ 0),
+         hemaglobin = case_when(sex == 1 & hemaglobin < 12 ~ 1,
+                                sex == 2 & hemaglobin < 13 ~ 1),
+         albumin = case_when(albumin  < 3.5 ~ 1),
+         alt = case_when(alt > 48 ~ 1,
+                         alt < 9 ~ 1),
+         ast = case_when(ast > 39 ~ 1,
+                         ast < 10 ~ 1),
+         livfun = ifelse(alt ==1 | ast == 1,1,0)) %>%
+  select(-sex) %>%
+  pivot_longer(-id, names_to = "varname",
+               values_to = "FDAI.points") 
+```
+
+# Weight, BMI
+
+```{r}
+weight.df <- baseline.vals %>%
+  select(id, bmi, weight, ga_pounds) %>%
+  mutate(bmi.ab = case_when(bmi < 18.5 ~ 1,
+                            bmi >= 25 ~ 1),
+         weight.perc = ga_pounds/weight,
+         weight.ab = case_when(weight.perc > 0.05 ~1)) %>%
+  select(id, bmi.ab, weight.ab) %>%
+  pivot_longer(-id, names_to = "varname", values_to = "FDAI.points")
+```
+
+# Final aggregation
+
+```{r}
+ga.complete <- baseline.vals %>%
+  filter(!is.na(carg_score))
+fdai <- bind_rows(ga.unnest.simp,
+          ga.unnest.radio.df,
+          ga.curhealth, 
+          ga.falls,
+          ga.polypharm,
+          ga.comorb.int,
+          ga.comorb.pres,
+          ga.socials.df,
+          ss.df,
+          othga.df,
+          labpoints.df,
+          weight.df) %>%
+  # bind_rows(mhi) %>%
+  group_by(id) %>%
+  summarize(FDAI = sum(FDAI.points, na.rm = T)) %>%
+  mutate(ga.complete = id %in% ga.complete$id)
+
+write.csv(fdai, "../data/fdai_score-calculations.csv", row.names = F)
+```
