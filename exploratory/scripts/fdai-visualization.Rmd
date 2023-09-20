@@ -1,0 +1,49 @@
+---
+title: "FDAI Visualization"
+author: "Dan Spakowicz"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+```{r}
+x <- read_csv("../data/fdai_score-calculations.csv")
+
+head(x)
+```
+
+```{r}
+complete <- 
+  x %>%
+  filter(ga.complete)
+
+complete %>%
+  ggplot(aes(x = FDAI)) +
+  geom_histogram() +
+  theme_bw()
+```
+
+```{r}
+complete %>%
+  summarize(median = median(FDAI))
+```
+```{r}
+complete %>%
+  mutate("FDAI\nCategory" = if_else(FDAI <= median(FDAI),
+                            true = "Low",
+                            false = "High")) %>%
+  complete %>%
+  ggplot(aes(x = FDAI)) +
+  geom_histogram(aes(fill = `FDAI\nCategory`)) +
+  theme_bw(base_size = 9) +
+  scale_fill_brewer(palette = "Set1")
+
+ggsave("../figures/fdai_histogram_category.png",
+       height = 2, width = 3)
+```
+
