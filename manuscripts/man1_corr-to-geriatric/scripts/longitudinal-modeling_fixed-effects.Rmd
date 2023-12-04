@@ -16,6 +16,7 @@ library(lmerTest)
 library(broom)
 library(rlist)
 library(ggforce)
+library(modelsummary)
 source("00-paths.R")
 ```
 
@@ -84,20 +85,27 @@ modelin <- clin.withdate %>%
 ```{r}
 long_mods <-function(outcome, mics.vec){
   
-  mods <- lapply(mics.vec, function(x) try(summary(lmer(formula = as.formula(paste0(outcome,
-                                                                                    " ~ ",
-                                                                                    x,
-                                                                                    " + rel.date +",
-                                                                                    " ici.name +",
-                                                                                    " (1|patient.id)")),
-                                                        data = modelin))$coefficients %>%
-                                             as.data.frame() %>%
-                                             rownames_to_column(var = "microbe") %>%
-                                             filter(microbe == x)))
-  mods.clean <- bind_rows(mods) %>%
-    arrange(`Pr(>|t|)`) %>%
-    mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr"))
-  return(mods.clean)
+  mods <- lapply(mics.vec, function(x) try(lmer(formula = as.formula(paste0(outcome,
+                                                                            " ~ ",
+                                                                            x,
+                                                                            " + rel.date +",
+                                                                            " ici.name +",
+                                                                            " (1|patient.id)")),
+                                                data = modelin)))
+  names(mods) <- mics.vec
+  mods.coef <- lapply(mics.vec, function(x) try(summary(mods[[x]])$coefficients %>%
+    as.data.frame() %>%
+    rownames_to_column(var = "microbe") %>%
+    filter(microbe == x)))
+mods.gof <- lapply(mics.vec, function(x) get_gof(mods[[x]]) %>%
+                     as.data.frame() %>%
+                     mutate(microbe = x)) %>%
+  bind_rows()
+mods.clean <- bind_rows(mods.coef) %>%
+  arrange(`Pr(>|t|)`) %>%
+  mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr")) %>%
+  left_join(mods.gof)
+return(mods.clean)
 }
 ```
 
@@ -129,3 +137,4 @@ write.csv(timedupgo, "../data/model_long-treat_timed-up-go.csv", row.names = F)
 
 write.csv(alltests, "../tables/S1_fixed-effects-models.csv", row.names = F)
 ```
+
