@@ -1,0 +1,225 @@
+---
+title: "Spearman sensitivity test"
+output: html_document
+date: "2023-11-17"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readxl)
+library(broom)
+source("00-paths.R")
+```
+
+For significant associations between GAs and microbes,genes, try spearman correlation for changes.
+
+# Load data
+
+```{r modelling results}
+# This object summarizes the significant results from the longitudinal mixed effects models
+significant.mics <- readRDS("../data/lollipop_all-models-df.RDS")
+
+# These were both significantly associated with IADL
+significant.genes <- c("LAG3", "CD8A")
+```
+
+```{r raw data}
+clin <- read.csv(
+  paste0(paths$t.drive, "/data/derived/clinical-OC-matched_resolved_limited.csv"),
+  stringsAsFactors = F
+  )
+clin.withdate <- read.csv(
+  paste0(paths$controlled, "/clinical-OC-matched_resolved.csv"),
+  stringsAsFactors = F
+)
+
+tsen <- read.csv("../../../exploratory/data/Tcell-senescence.csv")
+nano <- read.csv("../../../exploratory/data/nanostring_extracted.csv")
+
+ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
+
+mics <- read.table(file.path(paths$t.drive, "data","derived","merged_metaphlan_output.txt"), sep = "\t", header = T, stringsAsFactors = F)
+```
+
+# Formatting
+
+## Replicating orginal model inputs
+```{r microbe models}
+ICI.meds <- ICI.meds.raw %>%
+  rename(ici.nums = ...1,
+         ici.name = `Category (chemo, chemo + io, io, targeted, targeted+chemo)`) %>%
+  mutate(ici.name =str_replace_all(ici.name, "\\s", ""))
+
+clin.timein <- clin.withdate %>%
+  mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
+  select(patient.id, sequence.id, redcap_event_name, ici.nums) %>%
+  drop_na(ici.nums) %>%
+  mutate(ici.nums = as.numeric(ici.nums)) %>%
+  left_join(ICI.meds) %>%
+  mutate(ici.name = ifelse(ici.name == "n/a", "Not.ICI", ici.name))
+
+mics.form <- mics %>%
+  select(-NCBI_tax_id) %>%
+  mutate(clade_name = make.names(clade_name)) %>%
+  gather(-clade_name, key = "sequence.id", value = "RA") %>%
+  spread(key = clade_name, value = RA)
+
+mic.names <- colnames
+
+modelin.microbe <- clin.withdate %>%
+  select(patient.id, redcap_event_name, sppb_score, promis_score, 
+         iadl_score, tug, stool_sample_date, sequence.id) %>%
+  filter(!is.na(sppb_score) &!is.na(stool_sample_date)) %>%
+  mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+  group_by(patient.id) %>%
+  mutate(min.date = min(stool_sample_date)) %>%
+  ungroup() %>%
+  mutate(rel.date = as.numeric(stool_sample_date - min.date)) %>%
+  left_join(mics.form)%>%
+  left_join(clin.timein)
+```
+
+```{r genes}
+GA.score <- c("carg_score", "sppb_score", "blessed_score", "iadl_score", "promis_score")
+nano.genes <- colnames(nano)[-c(1:2)]
+
+getVisitDays <- function(){
+  enroll <- clin.withdate %>%
+    select(id, sid_2, enrollment_date) %>%
+    filter(enrollment_date != "") %>%
+    mutate(enrollment_date = as.Date(enrollment_date))
+  
+  tmp <- clin.withdate %>%
+    select(id, redcap_event_name, hem_lab_date) %>%
+    # pivot_longer(-sid_2, names_to = "vis", values_to = "date") %>%
+    filter(hem_lab_date != "") %>%
+    mutate(hem_lab_date = as.Date(hem_lab_date)) %>%
+    left_join(enroll) %>%
+    mutate(elapsed.days = as.numeric(hem_lab_date-enrollment_date)) %>%
+    mutate(visit = case_when(grepl("visit_1", redcap_event_name) ~ "SV1",
+                             grepl("visit_2", redcap_event_name) ~ "SV2",
+                             grepl("visit_3", redcap_event_name) ~ "SV3",
+                             grepl("visit_4", redcap_event_name) ~ "SV4")) %>%
+    rename("patient.id" = "sid_2")
+
+  return(tmp)
+
+}
+
+formatForCorrLong <- function(){
+  eldays <- getVisitDays()
+  
+  modin <- clin %>%
+    select(c("patient.id", "redcap_event_name", GA.score)) %>%
+    mutate(visit = case_when(redcap_event_name == "study_visit_1_arm_2" ~ "SV1",
+                             redcap_event_name == "study_visit_2_arm_2" ~ "SV2",
+                             redcap_event_name == "study_visit_3_arm_2" ~ "SV3",
+                             redcap_event_name == "study_visit_4_arm_2" ~ "SV4")) %>%
+    inner_join(tsen) %>%
+    left_join(nano) %>%
+    left_join(eldays) %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  
+  modin.scale <- modin %>%
+    select(c("Tcell.Senescence", nano.genes, GA.score[2:5])) %>%
+    scale()
+  
+  modin.scale.recomb <- modin %>%
+    select(-c("Tcell.Senescence", nano.genes, GA.score[2:5]))
+  modin.scale.recomb <- bind_cols(modin.scale.recomb, modin.scale)
+  
+  return(modin.scale.recomb)
+}
+
+modelin.gene <- formatForCorrLong()
+```
+
+## Adjust for change correlations
+
+```{r}
+spearin.mic <- modelin.microbe %>%
+  select(patient.id, redcap_event_name, 
+         unique(significant.mics$microbe), 
+         iadl_score, promis_score, sppb_score) %>%
+  pivot_longer(-c("patient.id", "redcap_event_name"), names_to = "measure", values_to = "result") %>%
+  pivot_wider(names_from = "redcap_event_name", values_from = "result") %>%
+  mutate(change = study_visit_4_arm_2 - study_visit_1_arm_2) %>%
+  drop_na(change) %>%
+  select(patient.id, measure, change) %>%
+  pivot_wider(names_from = "measure", values_from = "change")
+  
+```
+
+```{r}
+# Needs discussion - not many samples, and most iadl do not show change
+spearin.gene <- modelin.gene %>%
+  select(patient.id, visit, iadl_score, significant.genes) %>%
+  pivot_longer(-c("patient.id", "visit"), names_to = "measure", values_to = "result") %>%
+  pivot_wider(names_from = "visit", values_from = "result") %>%
+  mutate(change = SV4 - SV1) %>%
+  drop_na(change) %>%
+  select(patient.id, measure, change) %>%
+  pivot_wider(names_from = "measure", values_from = "change")
+```
+
+# Spearman tests
+
+```{r determine microbe pairs}
+microbe.iadl.pairs <- subset(significant.mics$microbe, significant.mics$model == "IADL")
+microbe.promis.pairs <- subset(significant.mics$microbe, significant.mics$model == "PROMIS")
+microbe.sppb.pairs <- subset(significant.mics$microbe, significant.mics$model == "SPPB")
+
+```
+
+```{r microbe tests IADL}
+IADL.res <- lapply(microbe.iadl.pairs, function(x) cor.test(spearin.mic[["iadl_score"]], spearin.mic[[x]], method = "spearman") %>%
+         tidy() %>%
+         mutate(microbe = x,
+                score = "IADL")) %>%
+  bind_rows()
+
+IADL.res
+```
+```{r microbe tests promis}
+PROMIS.res <- lapply(microbe.promis.pairs, function(x) cor.test(spearin.mic[["promis_score"]], spearin.mic[[x]], method = "spearman") %>%
+         tidy() %>%
+         mutate(microbe = x,
+                score = "PROMIS")) %>%
+  bind_rows()
+
+PROMIS.res
+```
+
+```{r microbe tests sppb}
+SPPB.res <- lapply(microbe.sppb.pairs, function(x) cor.test(spearin.mic[["sppb_score"]], spearin.mic[[x]], method = "spearman") %>%
+         tidy() %>%
+         mutate(microbe = x,
+                score = "SPPB")) %>%
+  bind_rows()
+
+SPPB.res
+```
+
+```{r gene tests}
+iadl.lag <- cor.test(spearin.gene$iadl_score, spearin.gene$LAG3, method = "spearman") %>%
+  tidy() %>%
+  mutate(score = "IADL",
+         gene = "LAG3")
+iadl.cd8 <- cor.test(spearin.gene$iadl_score, spearin.gene$CD8A, method = "spearman") %>%
+  tidy() %>%
+  mutate(score = "IADL",
+         gene = "CD8A")
+
+iadl.lag
+iadl.cd8
+```
+
+# Combine for supplement
+
+```{r}
+stab <- bind_rows(IADL.res, PROMIS.res, SPPB.res, iadl.lag, iadl.cd8)
+write.csv(stab, "../tables/S3_spearman-results.csv", row.names = F)
+```
