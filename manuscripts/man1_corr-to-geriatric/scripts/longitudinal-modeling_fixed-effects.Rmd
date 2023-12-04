@@ -94,18 +94,19 @@ long_mods <-function(outcome, mics.vec){
                                                 data = modelin)))
   names(mods) <- mics.vec
   mods.coef <- lapply(mics.vec, function(x) try(summary(mods[[x]])$coefficients %>%
-    as.data.frame() %>%
-    rownames_to_column(var = "microbe") %>%
-    filter(microbe == x)))
-mods.gof <- lapply(mics.vec, function(x) get_gof(mods[[x]]) %>%
-                     as.data.frame() %>%
-                     mutate(microbe = x)) %>%
-  bind_rows()
-mods.clean <- bind_rows(mods.coef) %>%
-  arrange(`Pr(>|t|)`) %>%
-  mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr")) %>%
-  left_join(mods.gof)
-return(mods.clean)
+                                                  as.data.frame() %>%
+                                                  rownames_to_column(var = "microbe") %>%
+                                                  filter(microbe == x)))
+  mods.gof <- lapply(mics.vec, function(x) get_gof(mods[[x]]) %>%
+                       as.data.frame() %>%
+                       mutate(microbe = x)) %>%
+    bind_rows()
+  
+  mods.clean <- bind_rows(mods.coef) %>%
+    arrange(`Pr(>|t|)`) %>%
+    mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr")) %>%
+    left_join(mods.gof)
+  return(mods.clean)
 }
 ```
 

@@ -13,6 +13,7 @@ library(glmm)
 library(lme4)
 library(lmerTest)
 library(ggrepel)
+library(modelsummary)
 source("00-paths.R")
 ```
 
@@ -148,19 +149,25 @@ formatForCorrLong <- function(){
 
 long_mods <-function(outcome, mics.vec){
   
-  mods <- lapply(mics.vec, function(x) 
-    try(summary(lmer(formula = as.formula(paste0(outcome,
-                                                 " ~ ",
-                                                 x,
-                                                 " + elapsed.days +",
-                                                 " (1|patient.id)")),
-                     data = modelin))$coefficients %>%
-          as.data.frame() %>%
-          rownames_to_column(var = "Gene") %>%
-          filter(Gene == x) %>%
-          mutate(score = outcome)))
-  mods.clean <- bind_rows(mods) %>%
-    arrange(`Pr(>|t|)`)
+   mods <- lapply(mics.vec, function(x) try(lmer(formula = as.formula(paste0(outcome,
+                                                                            " ~ ",
+                                                                            x,
+                                                                            " + elapsed.days +",
+                                                                            " (1|patient.id)")),
+                                                data = modelin)))
+  names(mods) <- mics.vec
+  mods.coef <- lapply(mics.vec, function(x) try(summary(mods[[x]])$coefficients %>%
+                                                  as.data.frame() %>%
+                                                  rownames_to_column(var = "microbe") %>%
+                                                  filter(microbe == x)))
+  mods.gof <- lapply(mics.vec, function(x) get_gof(mods[[x]]) %>%
+                       as.data.frame() %>%
+                       mutate(microbe = x)) %>%
+    bind_rows()
+  
+  mods.clean <- bind_rows(mods.coef) %>%
+    arrange(`Pr(>|t|)`) %>%
+    left_join(mods.gof)
   return(mods.clean)
 }
 ```
