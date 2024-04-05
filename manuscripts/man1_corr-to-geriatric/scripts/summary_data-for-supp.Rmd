@@ -223,13 +223,21 @@ pat.blood.info <- bloodinfo.join %>%
   filter(!grepl("Healthy", redcap_event_name))
 ```
 
+```{r T cell senescence}
+tsen.form <- tsen %>%
+  mutate(redcap_event_name = paste0("study_visit_", gsub("SV", "", visit), "_arm_2"),
+         patient.id = as.character(patient.id)) %>%
+  select(patient.id, redcap_event_name, Tcell.Senescence)
+```
+
 ```{r join together clinical}
 clin.form <- pat.dates.GA %>%
   full_join(pat.dates.stool) %>%
   full_join(pat.blood.info) %>%
   full_join(clin.GA) %>%
-  left_join(tox.res) %>%
+  full_join(tox.res)  %>%
   full_join(clin.ici) %>%
+  left_join(tsen.form) %>%
   filter(!grepl("arm_1", redcap_event_name)) %>%
   arrange(patient.id, redcap_event_name) %>%
   select(-id) %>%
