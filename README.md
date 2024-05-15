@@ -1,4 +1,5 @@
-# fitness
+# fitness [![DOI](https://zenodo.org/badge/234970332.svg)](https://zenodo.org/doi/10.5281/zenodo.11200745)
+
 Analysis associated with the manuscript: 
 
 >“The FITNESS Study: Longitudinal Geriatric Assessment, Treatment Toxicity, and Biospecimen Collection to Assess Functional Disability Among Older Adults with Lung Cancer”
