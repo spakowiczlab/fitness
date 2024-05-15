@@ -188,9 +188,12 @@ write.csv(gene.GA.res, "../data/correlations_GA-genes.csv", row.names = F)
 
 ```{r}
 modelin <- formatForCorrLong()
-GA.long <- lapply(GA.score[2:5], function(x) long_mods(x, c("Tcell.Senescence", nano.genes))) %>%
+GA.long <- lapply(GA.score[2:5], function(x) 
+  long_mods(x, c("Tcell.Senescence", nano.genes)) %>%
+                    mutate(GeriatricAssessment = x)) %>%
   bind_rows() %>%
-  mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr"))
+  mutate(padj = p.adjust(`Pr(>|t|)`, method = "fdr")) %>%
+  rename("Gene" = "microbe")
 
 write.csv(GA.long, "../data/longitudinal-modeling_nanostring.csv", row.names = F)
 write.csv(GA.long, "../tables/S2_longitudinal-modeling_nanostring.csv", row.names = F)
