@@ -1,0 +1,287 @@
+---
+title: "Prepare source data for publication"
+author: "Rebecca Hoyd"
+date: "2024-04-04"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(readxl)
+library(writexl)
+source("00-paths.R")
+```
+
+These are generally copied then somewhat altered from the timeline script
+```{r functions from timeline script}
+
+pullIDKey <- function(){
+  tmp <- clin.withdate %>%
+    select(id, sid_2) %>%
+    drop_na()
+  return(tmp)
+}
+
+matchMicrobes <- function(){
+  tmp <- key.microbe %>%
+    left_join(clin.withdate)
+  
+  return(tmp)
+}
+
+filterBloodPAts <- function(){
+  tmp <- bloodinfo %>%
+    rename("patient.id" = "Study ID") %>%
+    filter(!grepl("^1", patient.id) & !grepl("LTB", patient.id)) %>%
+    filter(Clinic == "Lung")
+  
+  return(tmp)
+}
+determineEarliestDay <- function(){
+  enroll <- clin.withdate %>%
+    select(sid_2, enrollment_date) %>%
+    filter(!enrollment_date == "") %>%
+    mutate(enrollment_date = as.Date(enrollment_date)) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  stool <- matchMicrobes() %>%
+    filter(is.na(redcap_repeat_instance)) %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date") %>%
+    drop_na(sequence.id) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+    group_by(patient.id) %>%
+    summarise(earliest_day_stool = min(stool_sample_date))  %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  bloodinfo.red <- filterBloodPAts() %>%
+    mutate(blood_date = as.Date(gsub("2109", "2019",`Date Sample Drawn`))) %>%
+    ungroup() %>%
+    group_by(patient.id) %>%
+    summarize(ealiest_day_blood = min(blood_date))
+  
+  datecompare <- stool %>%
+    full_join(bloodinfo.red) %>%
+    left_join(enroll) %>%
+    mutate(earliest_day = as.Date(ifelse(!is.na(enrollment_date), enrollment_date,
+                                 ifelse(earliest_day_stool < ealiest_day_blood,
+                                        earliest_day_stool, ealiest_day_blood)),
+                                 origin = "1970-01-01")
+           )%>%
+  select(patient.id, earliest_day)
+  
+  return(datecompare)
+}
+
+ToxFormDates <- function(){
+  earlydate <- determineEarliestDay()
+  idkey <- pullIDKey()
+  
+  cycle.dates <- clin.withdate %>%
+    select(id, redcap_event_name, redcap_repeat_instrument,
+           start_date_1) %>% 
+    filter(redcap_repeat_instrument == "" &
+             # grepl("cycle", redcap_event_name) & 
+             start_date_1 != "") %>%
+    # mutate(tox_onset_new2 = gsub(".*visit_(.*)_arm.*", "\\1",
+    #                              redcap_event_name)) %>%
+    left_join(idkey) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(patient.id = as.character(patient.id)) %>%
+    left_join(earlydate) %>%
+    drop_na(earliest_day) %>%
+    mutate(earliest_day = as.Date(earliest_day),
+           start_date_1 = as.Date(start_date_1),
+           elapsed.days = as.numeric(start_date_1 - earliest_day)) %>%
+    select(patient.id, redcap_event_name, elapsed.days)
+  
+  
+  toxnest <- clin.withdate %>%
+    filter(redcap_repeat_instrument == "adverse_events_and_toxicities_new") %>%
+    select(id, tox_grade_new, redcap_event_name) %>%
+    drop_na(tox_grade_new) %>%
+    group_by(id, redcap_event_name) %>%
+    summarise(max.gade = max(tox_grade_new)) %>%
+    # mutate(tox_onset_new2 = as.character(tox_onset_new2)) %>%
+    left_join(idkey) %>%
+    mutate(patient.id = as.character(sid_2)) %>%
+    left_join(cycle.dates) %>%
+    drop_na(elapsed.days) %>%
+    ungroup() %>%
+    select(patient.id, redcap_event_name, max.gade, elapsed.days)
+  
+  return(toxnest)
+}
+```
+# Clinical data
+
+```{r load patient variables}
+# clin <- read.csv(file.path(paths$t.drive, "data","derived", "clinical-OC-matched_resolved_limited.csv"),
+#                  stringsAsFactors = F)
+
+clin.withdate <- read.csv(file.path(paths$controlled,
+                                    "CoRR5512FITNESSCalcu_DATA_2023-02-22_1052.csv"),
+                          stringsAsFactors = F)
+
+key.microbe <- read.csv(file.path(paths$controlled, "key_fitness-microbe-clin.csv"))
+
+ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
+
+tsen <- read.csv("../data/Tcell-senescence.csv")
+
+bloodinfo <- read_excel(paste0(paths$t.drive, "/data/derived/TruDiagnostic Patient Info.xlsx"))
+```
+We can get some of this infor by pulling the patient timeline data, where relative dates have already been calculated.
+
+```{r handle dates}
+pat.time <- readRDS("../data/timeline_all-lung-clinic.RDS")
+
+pat.dates.stool <- pat.time$samples %>%
+  filter(sampletype == "stool") %>%
+  rename("days_microbiome_sample" = "elapsed.days",
+         "microbiome_id" = "sequence.id") %>%
+  select(patient.id, redcap_event_name, microbiome_id, days_microbiome_sample)
+  
+
+
+pat.dates.GA <- pat.time$samples %>%
+  filter(sampletype == "GA") %>%
+  rename("days_study_visit" = "elapsed.days") %>%
+  select(patient.id, redcap_event_name, days_study_visit)
+
+```
+
+```{r grab normally surveyed items}
+id.key <- pullIDKey() %>%
+  mutate(sid_2 = as.character(sid_2))
+
+clin.GA <- clin.withdate %>%
+  filter(redcap_repeat_instrument == "") %>%
+  select(id, redcap_event_name, sppb_score, promis_score, 
+         iadl_score, tug, blessed_score, carg_score) %>%
+  left_join(id.key) %>%
+  rename("patient.id" = "sid_2")
+```
+
+```{r deal with nested variables}
+tox.res <- ToxFormDates() %>%
+  rename("tox_maxgrade" = "max.gade",
+         "days_tox_event" = "elapsed.days")
+```
+
+```{r format ICI names}
+ICI.meds <- ICI.meds.raw %>%
+  rename(ici.nums = ...1,
+         ici.name = `Category (chemo, chemo + io, io, targeted, targeted+chemo)`) %>%
+  mutate(ici.name =str_replace_all(ici.name, "\\s", ""))
+
+clin.ici <- clin.withdate %>%
+  mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
+  select(id, redcap_event_name, ici.nums) %>%
+  drop_na(ici.nums) %>%
+  mutate(ici.nums = as.numeric(ici.nums)) %>%
+  left_join(ICI.meds) %>%
+  mutate(ici.name = ifelse(ici.name == "n/a", "Not.ICI", ici.name)) %>%
+  rename("treatment_drugname" = "Treatment drug names",
+         "treatment_drugcat" = "ici.name") %>%
+  select(id, redcap_event_name, treatment_drugname, treatment_drugcat) %>%
+  left_join(id.key) %>%
+  rename("patient.id" = "sid_2")
+```
+
+```{r handle blood nanostring samples}
+bloodinfo.join <- bloodinfo %>%
+  rename("blood_id" = "Accession #",
+         "patient.id" = "Study ID") %>%
+  mutate(sv = gsub("SV", "", Timepoint)) %>%
+  select(patient.id, blood_id, sv)
+
+pt.arm.info <- clin.withdate %>%
+  # select(id, redcap_event_name) %>%
+  mutate(arm = gsub(".*(\\d$)", "\\1", redcap_event_name)) %>%
+  select(id, arm) %>%
+  distinct()
+
+pat.dates.blood <- pat.time$samples %>%
+  filter(sampletype == "blood") %>%
+  rename("blood_id" = "sequence.id",
+         "days_blood" = "elapsed.days") %>%
+  select(patient.id, blood_id, days_blood)
+
+
+
+pat.blood.info <- bloodinfo.join %>%
+  mutate(sid_2 = patient.id) %>%
+  left_join(id.key) %>%
+  left_join(pt.arm.info) %>%
+  filter(arm == 2) %>%
+  mutate(redcap_event_name = paste0("study_visit_", sv, "_arm_", arm)) %>%
+  select(patient.id, redcap_event_name, blood_id) %>%
+  left_join(pat.dates.blood) %>%
+  filter(!grepl("Healthy", redcap_event_name))
+```
+
+```{r T cell senescence}
+tsen.form <- tsen %>%
+  mutate(redcap_event_name = paste0("study_visit_", gsub("SV", "", visit), "_arm_2"),
+         patient.id = as.character(patient.id)) %>%
+  select(patient.id, redcap_event_name, Tcell.Senescence)
+```
+
+```{r join together clinical}
+clin.form <- pat.dates.GA %>%
+  full_join(pat.dates.stool) %>%
+  full_join(pat.blood.info) %>%
+  full_join(clin.GA) %>%
+  full_join(tox.res)  %>%
+  full_join(clin.ici) %>%
+  left_join(tsen.form) %>%
+  filter(!grepl("arm_1", redcap_event_name)) %>%
+  arrange(patient.id, redcap_event_name) %>%
+  select(-id) %>%
+  drop_na(patient.id)
+```
+
+# Microbiome data
+
+```{r }
+mics <- read.table(file.path(paths$t.drive, "data","derived","merged_metaphlan_output.txt"), sep = "\t", header = T, stringsAsFactors = F)
+
+mics.form <- mics %>%
+  select(-NCBI_tax_id) %>%
+  mutate(clade_name = make.names(clade_name)) %>%
+  gather(-clade_name, key = "sequence.id", value = "RA") %>%
+  spread(key = clade_name, value = RA) %>%
+  rename("microbiome_id" = "sequence.id") %>%
+  filter(microbiome_id %in% clin.form$microbiome_id)
+
+```
+
+# Nanostring data
+
+```{r load nanostring data}
+nano <- read.csv("../../../exploratory/data/nanostring_extracted.csv") %>%
+  mutate(patient.id = as.character(patient.id))
+
+nan.swapid <- bloodinfo.join %>%
+  mutate(visit = paste0("SV", sv)) %>%
+  select(-sv) %>%
+  full_join(nano) %>%
+  filter(patient.id %in% clin.form$patient.id)
+```
+
+Not all IDs match, possibly due to the nanostring being run while samples were still being collected. 
+
+
+
+# Save as workbook
+
+```{r}
+out.tabs <- list(clin.form, mics.form, nan.swapid)
+names(out.tabs) <- c("ClinicalData", "MicrobiomeData", "NanostringData")
+
+write_xlsx(out.tabs, path = "../tables/S4_ClinicalSourceData.xlsx")
+```
+

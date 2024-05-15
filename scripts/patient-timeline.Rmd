@@ -1,0 +1,413 @@
+---
+title: "Concomitant PPI"
+author: "Rebecca Hoyd"
+date: "7/21/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tibble)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(viridis)
+library(readxl)
+library(stringr)
+library(forcats)
+source("00-paths.R")
+```
+
+
+# Load data
+
+```{r}
+ICI.meds.raw <- read_excel("../data/FITNESS_TreatmentCategories_8.23.21.xlsx")
+
+clin.withdate <- read.csv(file.path(paths$controlled, "CoRR5512FITNESSCalcu_DATA_2023-02-22_1052.csv"), stringsAsFactors = F)
+colnames(clin.withdate)[1] <- "id"
+
+key.microbe <- read.csv(file.path(paths$controlled, "key_fitness-microbe-clin.csv"))
+
+# Relevant patient data available in supp table 3
+bloodinfo <- read_excel(paste0(paths$t.drive, "/data/derived/TruDiagnostic Patient Info.xlsx"))
+
+recist <- read.csv("../data/RECIST.csv")
+
+```
+
+# Format
+
+```{r}
+matchMicrobes <- function(){
+  tmp <- key.microbe %>%
+    left_join(clin.withdate)
+  
+  return(tmp)
+}
+
+filterBloodPAts <- function(){
+  tmp <- bloodinfo %>%
+    rename("patient.id" = "Study ID") %>%
+    filter(!grepl("^1", patient.id) & !grepl("LTB", patient.id)) %>%
+    filter(Clinic == "Lung")
+  
+  return(tmp)
+}
+
+pullIDKey <- function(){
+  tmp <- clin.withdate %>%
+    select(id, sid_2) %>%
+    drop_na()
+  return(tmp)
+}
+```
+
+```{r handle dates}
+determineEarliestDay <- function(){
+  enroll <- clin.withdate %>%
+    select(sid_2, enrollment_date) %>%
+    filter(!enrollment_date == "") %>%
+    mutate(enrollment_date = as.Date(enrollment_date)) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  stool <- matchMicrobes() %>%
+    filter(is.na(redcap_repeat_instance)) %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date") %>%
+    drop_na(sequence.id) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+    group_by(patient.id) %>%
+    summarise(earliest_day_stool = min(stool_sample_date))  %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  bloodinfo.red <- filterBloodPAts() %>%
+    mutate(blood_date = as.Date(gsub("2109", "2019",`Date Sample Drawn`))) %>%
+    ungroup() %>%
+    group_by(patient.id) %>%
+    summarize(ealiest_day_blood = min(blood_date))
+  
+  datecompare <- stool %>%
+    full_join(bloodinfo.red) %>%
+    left_join(enroll) %>%
+    mutate(earliest_day = as.Date(ifelse(!is.na(enrollment_date), enrollment_date,
+                                 ifelse(earliest_day_stool < ealiest_day_blood,
+                                        earliest_day_stool, ealiest_day_blood)),
+                                 origin = "1970-01-01")
+           )%>%
+  select(patient.id, earliest_day)
+  
+  return(datecompare)
+}
+
+determineEndDate <- function(){
+    offstudy <- clin.withdate %>%
+    select(sid_2, offstudy) %>%
+    filter(!offstudy == "") %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(offstudy = as.Date(offstudy),
+           patient.id = as.character(patient.id))
+  
+  stool <- matchMicrobes() %>%
+    filter(is.na(redcap_repeat_instance)) %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date") %>%
+    drop_na(sequence.id) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date)) %>%
+    group_by(patient.id) %>%
+    summarise(max_day_stool = max(stool_sample_date))  %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  bloodinfo.red <- filterBloodPAts() %>%
+    mutate(blood_date = as.Date(gsub("2109", "2019",`Date Sample Drawn`))) %>%
+    ungroup() %>%
+    group_by(patient.id) %>%
+    summarize(max_day_blood = max(blood_date))
+  
+  datecompare <- stool %>%
+    full_join(bloodinfo.red) %>%
+    left_join(offstudy) %>%
+    mutate(max_day_stool = as.Date(ifelse(is.na(max_day_stool), as.Date("2000-01-01"), max_day_stool),
+                                   origin = "1970-01-01"),
+           max_day_blood = as.Date(ifelse(is.na(max_day_blood), as.Date("2000-01-01"), max_day_blood),
+                                   origin = "1970-01-01"),
+           end_day = as.Date(ifelse(!is.na(offstudy), offstudy,
+                                    ifelse(max_day_stool < max_day_blood,
+                                           max_day_blood, max_day_stool)),
+                             origin = "1970-01-01")
+    ) %>%
+  select(patient.id, end_day)
+  
+  return(datecompare)
+}
+
+getTimespans <- function(){
+  earlydate <- determineEarliestDay()
+  enddate <- determineEndDate()
+  
+  tspans <- full_join(earlydate, enddate) %>%
+    mutate(max.date = as.numeric(end_day - earliest_day)) %>%
+    select(patient.id, max.date)
+  
+  return(tspans)
+}
+
+clinFormFirstPass <- function(){
+  earlydate <- determineEarliestDay()
+  
+  tmp <- matchMicrobes() %>%
+    filter(is.na(redcap_repeat_instance)) %>%
+    mutate(patient.id = as.character(patient.id)) %>%
+    select("patient.id", "sequence.id", "redcap_event_name", "stool_sample_date", contains("tx_reg")) %>%
+    left_join(earlydate) %>%
+    mutate(stool_sample_date = as.Date(stool_sample_date),
+           elapsed.days = as.numeric(stool_sample_date - earliest_day)) %>%
+    mutate(sampletype = "stool")
+  return(tmp)
+}
+
+getBloodDates <- function(){
+  earlydate <- determineEarliestDay()
+  
+  blood.elapsed <- filterBloodPAts()%>% 
+    mutate(sequence.id = `Accession #`,
+           blood_date = as.Date(gsub("2109", "2019",`Date Sample Drawn`))) %>%
+    left_join(earlydate) %>%
+    mutate(elapsed.days = as.numeric(blood_date - earliest_day)) %>%
+    select(patient.id, sequence.id, elapsed.days) %>%
+    mutate(sampletype = "blood")
+}
+
+
+getGAdates <- function(){
+  # Determine which study visits have any GAs done
+  GAcols <- clin.withdate %>%
+    select( id, redcap_event_name, sppb_score, blessed_score, iadl_score, carg_score, tug) %>%
+    pivot_longer(-c("id", "redcap_event_name"), names_to = "GA", values_to =  "score") %>%
+    drop_na(score) %>%
+    group_by(id, redcap_event_name) %>%
+    tally() %>%
+    mutate(visitname = case_when(grepl("visit_1", redcap_event_name) ~ "SV1",
+                                 grepl("visit_2", redcap_event_name) ~ "SV2",
+                                 grepl("visit_3", redcap_event_name) ~ "SV3",
+                                 grepl("visit_4", redcap_event_name) ~ "SV4"))
+  
+  # Pull the dates for those visits
+  GAdates <- clin.withdate %>%
+    select(id, contains("complete_date")) %>%
+    pivot_longer(-id, names_to = "visit", values_to = "date") %>%
+    filter(date != "") %>%
+    mutate(visitname = case_when(grepl("visit_1", visit) ~ "SV1",
+                                 grepl("visit_2", visit) ~ "SV2",
+                                 grepl("visit_3", visit) ~ "SV3",
+                                 grepl("visit_4", visit) ~ "SV4"))
+  
+  earlydate <- determineEarliestDay()
+  
+  GAdates.plot <- GAdates %>%
+    left_join(GAcols) %>%
+    left_join(pullIDKey()) %>%
+    mutate(sampletype = "GA",
+           patient.id = as.character(sid_2),
+           date = as.Date(date),
+           sequence.id = visitname) %>%
+    left_join(earlydate) %>%
+    mutate(elapsed.days = as.numeric(date - earliest_day)) %>%
+    drop_na(elapsed.days) %>% 
+    select(patient.id, redcap_event_name, sequence.id, elapsed.days, sampletype)
+  
+  return(GAdates.plot)
+}
+```
+
+There's some pretty obvious issues with adding the toxicity events. First, there are no clear dates associated with these, instead they are defined by the cycle in which the toxicities started and ended, and I have to infer dates for these for treatment start and stop. I believe this was done to better match the way the stool samples were annotated before it was matched fully to the database. The start dates have plenty of missing information. I am also choosing to represent the toxicity time frames as single points of onset at the beginning of the cycle they are associated with, which doesn't entirely make sense.
+
+Most of these problems don't apply when going to model microbes with toxicity, as you'd simply pull the rows associated with each microbe sample, but creates problems if you want to view all toxicity data in relation to the other measures in the database. I think this problem will primarily be confined to this timeline.
+```{r toxicity manipulations}
+ToxFormDates <- function(){
+  earlydate <- determineEarliestDay()
+  idkey <- pullIDKey()
+  
+  cycle.dates <- clin.withdate %>%
+    select(id, redcap_event_name, redcap_repeat_instrument,
+           start_date_1) %>% 
+    filter(redcap_repeat_instrument == "" &
+             # grepl("cycle", redcap_event_name) & 
+             start_date_1 != "") %>%
+    # mutate(tox_onset_new2 = gsub(".*visit_(.*)_arm.*", "\\1",
+    #                              redcap_event_name)) %>%
+    left_join(idkey) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(patient.id = as.character(patient.id)) %>%
+    left_join(earlydate) %>%
+    drop_na(earliest_day) %>%
+    mutate(earliest_day = as.Date(earliest_day),
+           start_date_1 = as.Date(start_date_1),
+           elapsed.days = as.numeric(start_date_1 - earliest_day)) %>%
+    select(patient.id, redcap_event_name, elapsed.days)
+  
+  
+  toxnest <- clin.withdate %>%
+    filter(redcap_repeat_instrument == "adverse_events_and_toxicities_new") %>%
+    select(id, tox_grade_new, redcap_event_name) %>%
+    drop_na(tox_grade_new) %>%
+    group_by(id, redcap_event_name) %>%
+    summarise(max.gade = max(tox_grade_new)) %>%
+    # mutate(tox_onset_new2 = as.character(tox_onset_new2)) %>%
+    left_join(idkey) %>%
+    mutate(patient.id = as.character(sid_2)) %>%
+    left_join(cycle.dates) %>%
+    drop_na(elapsed.days) %>%
+    ungroup() %>%
+    select(patient.id, max.gade, elapsed.days)
+  
+  return(toxnest)
+}
+```
+
+```{r handle treatments}
+definePatientTreatments <- function(){
+  ICI.meds <- ICI.meds.raw %>%
+    rename(ici.nums = ...1,
+           ici.name = `Category (chemo, chemo + io, io, targeted, targeted+chemo)`) %>%
+    mutate(ici.name =str_replace_all(ici.name, "\\s", ""))
+  
+  redstudkey <- pullIDKey()
+  
+  patient.treatkey <- clin.withdate %>%
+    select(-sid_2) %>%
+    left_join(redstudkey) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(ici.nums = as.character(ifelse(!is.na(tx_reg_1_2), tx_reg_1_2, tx_reg_1))) %>%
+    select(patient.id, redcap_event_name, ici.nums) %>%
+    drop_na(ici.nums) %>%
+    mutate(ici.nums = as.numeric(ici.nums)) %>%
+    left_join(ICI.meds) %>%
+    group_by(patient.id, ici.name) %>%
+    tally() %>%
+    pivot_wider(names_from = ici.name, values_from = n) %>%
+    mutate(chemo_io = !is.na(`chemo+io`),
+           io = !is.na(io),
+           chemo = !is.na(chemo),
+           targeted = !is.na(targeted),
+           collapsed.treat = ifelse(chemo_io == T,
+                                    ifelse(targeted == T, "chemo,io,targeted", "chemo,io"),
+                                    ifelse(chemo == T,
+                                           ifelse(io == T, "chemo,io", "chemo"),
+                                           ifelse(io == T, "io", "targeted")))
+    ) %>%
+    select(patient.id, collapsed.treat) %>%
+    rename("summarise_treatment" = "collapsed.treat")
+  
+  return(patient.treatkey)
+}
+```
+
+
+
+
+```{r combine for plot}
+formatForPlot <- function(stool.only){
+  
+  mics.days <- clinFormFirstPass()
+  blood.days <- getBloodDates()
+  pattreatkey <- definePatientTreatments()
+  
+  if(stool.only == T){
+    stool.patients <- unique(mics.days$patient.id)
+    pattreatkey <- pattreatkey %>%
+      filter(patient.id %in% stool.patients)
+  }
+  
+  ribbon.in <- pattreatkey %>%
+    arrange(summarise_treatment) %>%
+    ungroup() %>%
+    filter(patient.id != "3051" & 
+             (patient.id %in% mics.days$patient.id | patient.id %in% blood.days$patient.id)) %>%
+    mutate(patnum = row_number(),
+           rib.low = patnum - .45,
+           rib.hi = patnum + .45) %>%
+    mutate(patient.id = as.character(patient.id))
+  
+  numpatkey <- ribbon.in %>%
+    select(patient.id, patnum)
+  
+  GA.samples <- getGAdates() %>%
+    filter(patient.id %in% numpatkey$patient.id)
+  toxdates <- ToxFormDates() %>%
+    filter(patient.id %in% numpatkey$patient.id) %>%
+    mutate(sampletype = "irAE")
+  
+  tmp <- toxdates %>%
+    group_by(patient.id) %>%
+    summarize(max.toxdate = max(elapsed.days)) 
+  clin.timespan <- getTimespans() %>%
+    left_join(numpatkey) %>%
+    filter(patient.id != "3051") %>%
+    drop_na(patnum) %>%
+    left_join(tmp) %>%
+    mutate(max.date = ifelse(max.toxdate > max.date,
+                            max.toxdate, max.date)) %>%
+    select(patient.id, patnum, max.date)
+  
+  
+  clin.timein.days <- mics.days %>%
+    select(patient.id, sequence.id, redcap_event_name, elapsed.days, sampletype) %>%
+    bind_rows(blood.days) %>%
+    bind_rows(GA.samples) %>%
+    bind_rows(toxdates) %>%
+    left_join(numpatkey) %>%
+    filter(patient.id != "3051") %>%
+    drop_na(patnum)
+  
+  recist.anno <- recist %>%
+    select(patient.id, RECIST_month3) %>%
+    drop_na(RECIST_month3) %>%
+    left_join(numpatkey) %>%
+    drop_na(patnum)
+  
+  plot.inputs <- list(clin.timein.days, clin.timespan,
+                      ribbon.in, recist.anno)
+  names(plot.inputs) <- c("samples", "timeline", "ribbon", "recist")
+  
+  return(plot.inputs)
+}
+```
+
+# Visualize timelines
+
+
+```{r}
+# timein <- formatForPlot(stool.only = F)
+# saveRDS(timein, "../data/timeline_stool-patient-only.RDS")
+# saveRDS(timein, "../data/timeline_all-lung-clinic.RDS")
+timein <- readRDS("../data/timeline_all-lung-clinic.RDS")
+
+ggplot() +
+  geom_rect(data = timein$ribbon,
+            aes(ymin = rib.low, ymax = rib.hi,
+                fill = summarise_treatment),
+            alpha = .5,
+            xmin = 0, xmax = 755) +
+  geom_segment(data = timein$timeline, aes(x = 0,
+                                           xend = max.date, 
+                                           y = patnum,
+                                           yend = patnum)) +
+  geom_point(data = timein$samples, aes(x = elapsed.days,
+                                        y = patnum,
+                                        shape = fct_relevel(sampletype, "stool"),
+                                        color = as.factor(max.gade)),
+             stroke = 1.25) +
+  geom_text(data = timein$recist, aes(x = 500, y = patnum, label = RECIST_month3)) +
+  scale_fill_viridis_d(name = "Treatment", breaks = c("chemo", "chemo,io", "io", "targeted"),
+                       labels = c("Chemo", "Chemo+IO", "IO", "Targeted")) +
+  scale_color_grey(na.value = "black", name = "irAE Toxicity") +
+  scale_shape(name = "Event type") +
+  scale_y_continuous(breaks = timein$ribbon$patnum, labels = timein$ribbon$patient.id) +
+  labs(x = "Days", y = "Patient ID") +
+  theme_classic() +
+  theme(text = element_text(size = 9))
+
+ggsave("../figures/timeline_fitness-patients.png", height = 7, width = 7)
+```
+
