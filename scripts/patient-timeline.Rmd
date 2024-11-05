@@ -411,3 +411,29 @@ ggplot() +
 ggsave("../figures/timeline_fitness-patients.png", height = 7, width = 7)
 ```
 
+# Elapsed days for all redcap events
+```{r}
+earlydate <- determineEarliestDay()
+  idkey <- pullIDKey()
+  
+  cycle.dates <- clin.withdate %>%
+    select(id, redcap_event_name, redcap_repeat_instrument,
+           start_date_1) %>% 
+    filter(redcap_repeat_instrument == "" &
+             # grepl("cycle", redcap_event_name) & 
+             start_date_1 != "") %>%
+    # mutate(tox_onset_new2 = gsub(".*visit_(.*)_arm.*", "\\1",
+    #                              redcap_event_name)) %>%
+    left_join(idkey) %>%
+    rename("patient.id" = "sid_2") %>%
+    mutate(patient.id = as.character(patient.id)) %>%
+    left_join(earlydate) %>%
+    drop_na(earliest_day) %>%
+    mutate(earliest_day = as.Date(earliest_day),
+           start_date_1 = as.Date(start_date_1),
+           elapsed.days = as.numeric(start_date_1 - earliest_day)) %>%
+    select(patient.id, redcap_event_name, elapsed.days)
+  
+  saveRDS(cycle.dates, "../data/timing-of-redcap-events.rds")
+```
+
