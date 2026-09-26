@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980" role="img" aria-labelledby="title desc">
+  <title id="title">Graphical abstract of the FITNESS study</title>
+  <desc id="desc">Summary of the FITNESS cohort, repeated geriatric assessment and biospecimen collection, and associations of CARG scores, gut microbes, and T-cell genes with function.</desc>
+  <rect width="1600" height="980" fill="#F6F1E7"/>
+  <rect width="1600" height="118" fill="#0E3A4D"/>
+  <text x="48" y="58" fill="#FFFFFF" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="36" font-weight="700">The FITNESS study</text>
+  <text x="48" y="92" fill="#F4E4B3" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="18">Functional disability, treatment toxicity, and biomarkers in older adults with lung cancer</text>
+  <text x="1552" y="54" text-anchor="end" fill="#FFFFFF" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="16" font-weight="600">Frontiers in Aging</text>
+  <text x="1552" y="78" text-anchor="end" fill="#F4E4B3" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14">2024 | 5:1268232</text>
+
+  <g font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif">
+    <rect x="40" y="150" width="488" height="700" rx="18" fill="#FFFCF7" stroke="#E4DCC8"/>
+    <rect x="556" y="150" width="488" height="700" rx="18" fill="#FFFCF7" stroke="#E4DCC8"/>
+    <rect x="1072" y="150" width="488" height="700" rx="18" fill="#FFFCF7" stroke="#E4DCC8"/>
+
+    <path d="M536 490 L552 500 L536 510" fill="none" stroke="#0E3A4D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M1052 490 L1068 500 L1052 510" fill="none" stroke="#0E3A4D" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+
+    <circle cx="78" cy="190" r="16" fill="#0E3A4D"/>
+    <text x="78" y="196" text-anchor="middle" fill="#FFFFFF" font-size="16" font-weight="700">1</text>
+    <text x="106" y="196" fill="#0E3A4D" font-size="22" font-weight="700">Cohort</text>
+
+    <text x="72" y="278" fill="#0E3A4D" font-size="64" font-weight="700">50</text>
+    <text x="188" y="258" fill="#0E3A4D" font-size="18" font-weight="600">adults, 60 years or older</text>
+    <text x="188" y="282" fill="#3D4C57" font-size="16">new or recurrent NSCLC</text>
+
+    <line x1="72" y1="318" x2="496" y2="318" stroke="#E4DCC8"/>
+
+    <g fill="#3D4C57" font-size="17">
+      <text x="72" y="360">The Ohio State University</text>
+      <text x="72" y="386">Comprehensive Cancer Center</text>
+      <text x="72" y="412">Enrolled 2018-2020</text>
+    </g>
+
+    <g font-size="16">
+      <rect x="72" y="448" width="392" height="36" rx="8" fill="#F3E6C4"/>
+      <text x="88" y="472" fill="#0E3A4D">Mean age 71.7 years (range 60-88)</text>
+      <rect x="72" y="496" width="392" height="36" rx="8" fill="#F3E6C4"/>
+      <text x="88" y="520" fill="#0E3A4D">90% stage III or IV at diagnosis</text>
+      <rect x="72" y="544" width="392" height="56" rx="8" fill="#E7F6F2"/>
+      <text x="88" y="568" fill="#0E3A4D">First-line treatment: chemotherapy,</text>
+      <text x="88" y="588" fill="#0E3A4D">immunotherapy, or targeted therapy</text>
+    </g>
+
+    <text x="72" y="652" fill="#0E3A4D" font-size="15" font-weight="700">Feasibility</text>
+    <text x="72" y="680" fill="#3D4C57" font-size="15">Among participants still eligible,</text>
+    <text x="72" y="702" fill="#3D4C57" font-size="15">90% completed the 3-month visit</text>
+    <text x="72" y="724" fill="#3D4C57" font-size="15">and 92% completed the 6-month visit.</text>
+    <text x="72" y="760" fill="#3D4C57" font-size="15">113 stool samples were collected,</text>
+    <text x="72" y="782" fill="#3D4C57" font-size="15">including 24 before treatment.</text>
+
+    <circle cx="594" cy="190" r="16" fill="#0E3A4D"/>
+    <text x="594" y="196" text-anchor="middle" fill="#FFFFFF" font-size="16" font-weight="700">2</text>
+    <text x="622" y="196" fill="#0E3A4D" font-size="22" font-weight="700">What was repeated</text>
+
+    <line x1="620" y1="268" x2="980" y2="268" stroke="#0E3A4D" stroke-width="3"/>
+    <g fill="#0E3A4D" font-size="13" font-weight="600">
+      <circle cx="620" cy="268" r="7" fill="#E6B325"/>
+      <text x="620" y="298" text-anchor="middle">Baseline</text>
+      <circle cx="740" cy="268" r="7" fill="#E6B325"/>
+      <text x="740" y="298" text-anchor="middle">3 months</text>
+      <circle cx="860" cy="268" r="7" fill="#E6B325"/>
+      <text x="860" y="298" text-anchor="middle">6 months</text>
+      <circle cx="980" cy="268" r="7" fill="#E6B325"/>
+      <text x="980" y="292" text-anchor="middle">12 months</text>
+      <text x="980" y="308" text-anchor="middle">or completion</text>
+    </g>
+
+    <g font-size="16" fill="#1C2830">
+      <rect x="596" y="348" width="8" height="56" rx="2" fill="#E6B325"/>
+      <text x="620" y="370" font-weight="700">Geriatric assessment</text>
+      <text x="620" y="392" fill="#3D4C57" font-size="14">CARG-CGA, IADL, PROMIS, SPPB, BOMC</text>
+
+      <rect x="596" y="424" width="8" height="56" rx="2" fill="#D4574E"/>
+      <text x="620" y="446" font-weight="700">Treatment toxicity</text>
+      <text x="620" y="468" fill="#3D4C57" font-size="14">CTCAE grade, monthly on treatment</text>
+
+      <rect x="596" y="500" width="8" height="72" rx="2" fill="#1F8A70"/>
+      <text x="620" y="522" font-weight="700">Stool microbiome</text>
+      <text x="620" y="544" fill="#3D4C57" font-size="14">Shotgun metagenomics</text>
+      <text x="620" y="564" fill="#3D4C57" font-size="14">MetaPhlAn / HUMAnN 3 profiles</text>
+
+      <rect x="596" y="592" width="8" height="72" rx="2" fill="#3D5A80"/>
+      <text x="620" y="614" font-weight="700">Peripheral blood T cells</text>
+      <text x="620" y="636" fill="#3D4C57" font-size="14">NanoString senescence panel</text>
+      <text x="620" y="656" fill="#3D4C57" font-size="14">including LAG3 and CD8A</text>
+    </g>
+
+    <text x="596" y="760" fill="#3D4C57" font-size="15">Mixed-effects models relate each</text>
+    <text x="596" y="782" fill="#3D4C57" font-size="15">measure to days on study, with a</text>
+    <text x="596" y="804" fill="#3D4C57" font-size="15">random intercept for each person.</text>
+
+    <circle cx="1110" cy="190" r="16" fill="#0E3A4D"/>
+    <text x="1110" y="196" text-anchor="middle" fill="#FFFFFF" font-size="16" font-weight="700">3</text>
+    <text x="1138" y="196" fill="#0E3A4D" font-size="22" font-weight="700">What tracked together</text>
+
+    <rect x="1104" y="230" width="424" height="128" rx="12" fill="#FDECEC"/>
+    <text x="1124" y="260" fill="#8C2F2F" font-size="16" font-weight="700">Higher CARG score (8 or more)</text>
+    <text x="1124" y="286" fill="#1C2830" font-size="15">More grade 3 or higher toxicity</text>
+    <text x="1124" y="310" fill="#1C2830" font-size="15">28% of participants, versus 13.6%</text>
+    <text x="1124" y="332" fill="#1C2830" font-size="15">when the baseline score was 7 or less.</text>
+
+    <rect x="1104" y="374" width="424" height="188" rx="12" fill="#E7F6F2"/>
+    <text x="1124" y="404" fill="#146353" font-size="16" font-weight="700">Higher IADL, quality of life, SPPB</text>
+    <text x="1124" y="432" fill="#1C2830" font-size="15" font-style="italic">Candidatus Gastranaerophilales</text>
+    <text x="1124" y="452" fill="#1C2830" font-size="15" font-style="italic">bacterium</text>
+    <text x="1124" y="476" fill="#1C2830" font-size="15" font-style="italic">Lactobacillus rogosae</text>
+    <text x="1124" y="500" fill="#1C2830" font-size="15" font-style="italic">Enterobacteria phage P4</text>
+    <text x="1124" y="532" fill="#3D4C57" font-size="14">Gut relative abundance in the</text>
+    <text x="1124" y="550" fill="#3D4C57" font-size="14">longitudinal models.</text>
+
+    <rect x="1104" y="578" width="424" height="236" rx="12" fill="#F3E6C4"/>
+    <text x="1124" y="608" fill="#6B4E12" font-size="16" font-weight="700">Lower IADL, quality of life, SPPB</text>
+    <text x="1124" y="636" fill="#1C2830" font-size="15" font-style="italic">Romboutsia ilealis</text>
+    <text x="1124" y="660" fill="#1C2830" font-size="15" font-style="italic">Streptococcus</text>
+    <text x="1124" y="684" fill="#1C2830" font-size="15" font-style="italic">Lachnoclostridium sp. An138</text>
+    <text x="1124" y="714" fill="#1C2830" font-size="15">T-cell LAG3 and CD8A expression</text>
+    <text x="1124" y="736" fill="#1C2830" font-size="15">tracked with lower IADL scores.</text>
+  </g>
+
+  <text x="40" y="910" fill="#3D4C57" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="15">Grogan et al. The FITNESS study. Front Aging. 2024;5:1268232. doi:10.3389/fragi.2024.1268232</text>
+  <text x="1560" y="910" text-anchor="end" fill="#3D4C57" font-family="Avenir Next, Helvetica Neue, Helvetica, Arial, sans-serif" font-size="14">Repository summary, not a journal figure</text>
+</svg>
